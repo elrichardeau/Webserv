@@ -5,19 +5,20 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <unistd.h>
-#include <arpa/inet.h>
+#include <poll.h>
+#include <sstream>
 
 
 int main()
 {
     int server_fd; //Declaration de l'id de la socket serveur
-    int new_socket; //Declaration de l'id de la nouvelle socket pour la connexion client
+    int client_socket; //Declaration de l'id de la nouvelle socket pour la connexion client
 
     struct sockaddr_in address; //Structure pour stocker les addresses IP et les numeros de port pour IPv4
     int opt = 1; //Option pour permettre le redemarrage rapide du serveur
     int addrlen = sizeof(address); //Taille de la structure adresse 
     char buffer[1024] = {0}; //Buffer pour stocker les donnees recues
-    const char *hello = "Hello from server\n"; //Message a envoyer au client 
+    // const char *hello = "Message received by server\n"; //Message a envoyer au client 
 
     //Creation de la socket
     if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0 )
@@ -50,24 +51,52 @@ int main()
         perror ("listen");
         exit (EXIT_FAILURE);
     }
-    // Accepte une nouvelle connexion
-    //bloque le programme jusqu'a ce qu'une connexion entrante soit etablie, accept renvoie un nouveau fd representant la connexion avec le client
-    if ((new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t *)&addrlen)) < 0) 
+
+    struct pollfd fds[1];
+    fds[0].fd = server_fd;
+    fds[0].events = POLLIN;
+    while (true)
     {
-        perror("accept");
-        exit (EXIT_FAILURE);
-    }
-    //Lecture du message du client
-    while (recv(new_socket, buffer, 1024, 0) > 0)//lit les donnees envoyees par le client dans le buffer 
-    {
-        std::cout << "Message from client: " << buffer << std::endl;
+        int poll_count = poll(fds, 1, -1);
+
+        if (poll_count == -1)
+        {
+            perror("poll");
+            exit(EXIT_FAILURE);
+        }
+        if (fds[0].revents & POLLIN)
+        {
+            // Accepter une nouvelle connexion
+            //bloque le programme jusqu'a ce qu'une connexion entrante soit etablie, accept renvoie un nouveau fd representant la connexion avec le client
+            client_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t*)&addrlen);
+            if (client_socket < 0)
+            {
+                perror("accept");
+                exit(EXIT_FAILURE);
+            }
+        }
+        recv(client_socket, buffer, 1024, 0);
+        std::string request(buffer);
+        std::istringstream request_stream(request);
+        std::string method, path, version;
+        request_stream >> method >> path >> version;
+
+        // Afficher les détails de la requête
+        std::cout << "Method: " << method << std::endl;
+        std::cout << "Path: " << path << std::endl;
+        std::cout << "Version: " << version << std::endl;
+
+        // Générer une réponse HTTP 200 OK
+        std::string response = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\nMessage received by the server\n";
 
         //Envoi d'une reponse au client
-        send(new_socket, hello, strlen(hello), 0); //envoie la chaine au client connecte 
+        send(client_socket, response.c_str(), response.size(), 0); //envoie la chaine au client connecte 
         std::cout << "Hello message sent." << std::endl;
+
+        //Fermeture de la connexion
+        close(client_socket);
     }
-    //Fermeture de la socket
-    close(new_socket);
+    //Fermeture de la socket du serveur
     close(server_fd);
 
     return(0);
