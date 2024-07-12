@@ -6,13 +6,23 @@
 #include <netinet/in.h>
 #include <unistd.h>
 #include <arpa/inet.h>
+#include <fstream>
 
 #define LEN_BUF 30000
 #define PORT 8080
 
-void print_failed(const std::string &s) {
+void printFailed(const std::string &s) {
     std::cout << s << std::endl;
     exit(1);
+}
+
+void addPage(std::string &page) {
+    std::ifstream fd("text.html");
+    std::string line;
+    while (getline(fd, line)) {
+        page = page + line + "\n";
+    }
+    fd.close();
 }
 
 int main() {
@@ -27,19 +37,24 @@ int main() {
     address.sin_port = htons(PORT);
     server_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (server_fd == -1)
-        print_failed("Socket Failed !");
+        printFailed("Socket Failed !");
     if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)))
-        print_failed("Set socket opt Failed !");
+        printFailed("Set socket opt Failed !");
     if (bind(server_fd, (struct sockaddr *)&address, sizeof(address)) < 0)
-        print_failed("Bind Failed !");
+        printFailed("Bind Failed !");
     if (listen(server_fd, 1) < 0)
-        print_failed("Listen Failed !");
-    if ((client_fd = accept(server_fd, (struct sockaddr *)&address, (socklen_t *)&addrlen)) == -1)
-        print_failed("Accept new client Failed !");
+        printFailed("Listen Failed !");
+    client_fd = accept(server_fd, (struct sockaddr *)&address, (socklen_t *)&addrlen);
+    if (client_fd == -1)
+        printFailed("Accept new client Failed !");
     if (recv(client_fd, buf, LEN_BUF, 0) == -1)
-        print_failed("Receive Failed !");
-    std::cout << "Message from client: " << buf << std::endl;
-    send(client_fd, buf, strlen(buf), 0);
+        printFailed("Receive Failed !");
+    std::cout << buf;
+    std::cout << "========================" << std::endl << std::endl;
+    std::string page = "HTTP/1.1 200 OK\nContent-Type: text/html\n\n";
+    addPage(page);
+    std::cout << page << std::endl;
+    send(client_fd, page.c_str(), strlen(page.c_str()), 0);
     close(client_fd);
     close(server_fd);
     return 0;
