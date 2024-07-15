@@ -1,7 +1,8 @@
 CXX = c++
 CXXFLAGS = -Wall -Wextra -Werror -MMD -std=c++98
 
-SOURCES = main.cpp
+SOURCES = main.cpp \
+			requests.cpp
 
 SRC = ./
 DIR = objs_deps/
