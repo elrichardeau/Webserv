@@ -1,36 +1,45 @@
 #ifndef CONFIG_HPP
 #define CONFIG_HPP
-
 #include <iostream>
+#include <vector>
+#include <cstring>
+#include <cstdlib>
+#include <cstdio>
 #include <fstream>
 #include <sstream>
-#include <string>
-#include <map>
-#include <vector>
-#include <algorithm>
+#include <stdexcept>
+#include "LocationConfig.hpp"
+#include "ErrorPageConfig.hpp"
+#include "ServerConfig.hpp"
 
-
-struct ServerConfig
+class Config 
 {
-    int port;
-    std::string host;
-    std::string root_directory;
-    std::string default_file;
-    std::string error_page_404;
-};
+	public:
+		Config();
+		Config(Config const &other);
+		Config &operator=(Config const &other);
+		~Config();
 
-struct LogConfig
-{
-    std::string log_file;
-    std::string log_level;
-};
+		void addServer(const ServerConfig &server);
+		std::vector<ServerConfig> getServers() const;
+		static std::vector<std::string> split(const std::string &str, char delimiter);
+		static Config readConfig(const std::string &filename);
+		static Config location(std::vector<std::string> tokens, std::string line, LocationConfig current_location);
+		static Config server(std::vector<std::string> tokens, std::string line, ServerConfig current_server);
+		static Config error_page(std::vector<std::string> tokens, std::string line, ServerConfig current_server);
 
-struct Config
-{
-    ServerConfig server;
-    LogConfig log;
-};
+	private:
+		std::vector<ServerConfig> servers;
 
-Config readConfig(const std::string& filename);
+	class Openfile : public std::exception
+	{
+		public:
+		virtual const char *what(void) const throw()
+		{
+			return ("Error: could not open file.");
+		}
+	};
+};
 
 #endif 
+
