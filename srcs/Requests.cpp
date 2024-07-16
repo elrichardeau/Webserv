@@ -1,12 +1,12 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   requests.cpp                                       :+:      :+:    :+:   */
+/*   Requests.cpp                                       :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: niromano <niromano@student.42.fr>          +#+  +:+       +#+        */
+/*   By: elrichar <elrichar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/07/15 11:56:05 by niromano          #+#    #+#             */
-/*   Updated: 2024/07/15 18:04:06 by niromano         ###   ########.fr       */
+/*   Updated: 2024/07/16 14:56:30 by elrichar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,7 +15,7 @@
 #include <cstring>
 #include <iostream>
 #include <fstream>
-#include "requests.hpp"
+#include "../includes/Requests.hpp"
 
 Requests readRequest(std::string buf) {
 	std::string firstLine = buf.substr(0, buf.find("\n"));
@@ -54,9 +54,9 @@ std::string Requests::getResponse() {
 	chdir("./pages");
 	if (isSyntaxError())
 		return getPage("error/400.html", "HTTP/1.1 400 Bad Request\n\n");
-	if (!access((this->_path).c_str(), F_OK))
+	if (access((this->_path).c_str(), F_OK))
 		return getPage("error/404.html", "HTTP/1.1 404 Not Found\n\n");
-	if (!access((this->_path).c_str(), R_OK))
+	if (access((this->_path).c_str(), R_OK))
 		return getPage("error/403.html", "HTTP/1.1 403 Forbidden\n\n");
 	if (this->_path == "./")
 		return getPage("default.html", "HTTP/1.1 200 OK\n\n");

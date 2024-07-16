@@ -1,5 +1,5 @@
-#ifndef CONFIG_HPP
-#define CONFIG_HPP
+#pragma once
+
 #include <iostream>
 #include <vector>
 #include <cstring>
@@ -24,9 +24,9 @@ class Config
 		std::vector<ServerConfig> getServers() const;
 		static std::vector<std::string> split(const std::string &str, char delimiter);
 		static Config readConfig(const std::string &filename);
-		static Config location(std::vector<std::string> tokens, std::string line, LocationConfig current_location);
-		static Config server(std::vector<std::string> tokens, std::string line, ServerConfig current_server);
-		static Config error_page(std::vector<std::string> tokens, std::string line, ServerConfig current_server);
+		static void location(std::vector<std::string> tokens, std::string line, LocationConfig current_location);
+		static void server(std::vector<std::string> tokens, std::string line, ServerConfig current_server);
+		static void errorPage(std::vector<std::string> tokens, std::string line, ServerConfig current_server);
 
 	private:
 		std::vector<ServerConfig> servers;
@@ -40,6 +40,3 @@ class Config
 		}
 	};
 };
-
-#endif 
-

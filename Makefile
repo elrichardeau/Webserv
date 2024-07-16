@@ -2,9 +2,13 @@ CXX = c++
 CXXFLAGS = -Wall -Wextra -Werror -MMD -std=c++98
 
 SOURCES = main.cpp \
-			requests.cpp
+		  Config.cpp \
+		  ErrorPageConfig.cpp \
+		  LocationConfig.cpp \
+		  ServerConfig.cpp \
+		  Requests.cpp
 
-SRC = ./
+SRC = srcs/
 DIR = objs_deps/
 
 SRCS = $(addprefix $(SRC), $(SOURCES))

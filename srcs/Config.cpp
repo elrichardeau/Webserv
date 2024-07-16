@@ -1,4 +1,4 @@
-#include "Config.hpp"
+#include "../includes/Config.hpp"
 
 Config::Config(){}
 
@@ -37,7 +37,7 @@ std::vector<std::string> Config::split(const std::string &str, char delimiter)
     return (tokens);
 }
 
-Config Config::location(std::vector<std::string> tokens, std::string line, LocationConfig current_location)
+void Config::location(std::vector<std::string> tokens, std::string line, LocationConfig current_location)
 {
     tokens = Config::split(line, ' ');
     if (tokens[0] == "allow_methods")
@@ -63,38 +63,38 @@ Config Config::location(std::vector<std::string> tokens, std::string line, Locat
         current_location.setUploadDir(tokens[1]);
 }
 
-Config Config::server(std::vector<std::string> tokens, std::string line, ServerConfig current_server)
+void Config::server(std::vector<std::string> tokens, std::string line, ServerConfig current_server)
 {
     tokens = Config::split(line, ' ');
     if (tokens[0] == "listen")
-        current_server.setListen(std::stoi(tokens[1]));
+        current_server.setListen(std::atoi(tokens[1].c_str()));
     else if (tokens[0] == "host")
         current_server.setHost(tokens[1]);
     else if (tokens[0] == "server_name")
         current_server.setServerName(tokens[1]);
     else if (tokens[0] == "client_max_body_size")
-        current_server.setClientMaxBodySize(std::stoi(tokens[1]));
+        current_server.setClientMaxBodySize(std::atoi(tokens[1].c_str()));
     else if (tokens[0] == "root")
         current_server.setRoot(tokens[1]);
 }
 
-Config Config::error_page(std::vector<std::string> tokens, std::string line, ServerConfig current_server)
+void Config::errorPage(std::vector<std::string> tokens, std::string line, ServerConfig current_server)
 {
     tokens = Config::split(line, ' ');
     ErrorPageConfig error_page;
-    error_page.setCode(std::stoi(tokens[0]));
+    error_page.setCode(std::atoi(tokens[0].c_str()));
     error_page.setPath(tokens[1]);
     current_server.addErrorPage(error_page);
 }
 
 Config Config::readConfig(const std::string &filename)
 {
-    std::ifstream file(filename);
+    std::ifstream file(filename.c_str());
     if (!file.is_open())
         throw Openfile();
 
     std::string line;
-    Config config;
+    Config Config;
     ServerConfig current_server;
     LocationConfig current_location;
     bool in_server_block = false;
@@ -121,7 +121,7 @@ Config Config::readConfig(const std::string &filename)
             } 
             else if (in_server_block) 
             {
-                config.addServer(current_server);
+                Config.addServer(current_server);
                 in_server_block = false;
             }
         } 
@@ -138,9 +138,9 @@ Config Config::readConfig(const std::string &filename)
         else if (in_location_block)
             location(tokens, line, current_location);
 		else if (in_error_page_block)
-            error_page(tokens, line, current_server);
+            errorPage(tokens, line, current_server);
     }
-    return (config);
+    return (Config);
 }
 
 

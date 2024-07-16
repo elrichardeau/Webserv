@@ -1,3 +1,0 @@
-GET : https://developer.mozilla.org/fr/docs/Web/HTTP/Methods/GET
-Status code : https://fr.wikipedia.org/wiki/Liste_des_codes_HTTP
-Response headers : https://en.wikipedia.org/wiki/List_of_HTTP_header_fields
