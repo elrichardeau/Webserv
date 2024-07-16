@@ -32,7 +32,8 @@ std::vector<std::string> Config::split(const std::string &str, char delimiter)
     std::istringstream tokenStream(str);
     while (std::getline(tokenStream, token, delimiter))
     {
-        tokens.push_back(token);
+        if (!token.empty())
+            tokens.push_back(token);
     }
     return (tokens);
 }
@@ -68,8 +69,22 @@ void Config::server(std::vector<std::string> tokens, std::string line, ServerCon
     tokens = Config::split(line, ' ');
     if (tokens[0] == "listen")
     {
+        char *end;
         for (size_t i = 1; i < tokens.size(); ++i)
-            current_server.setListen(std::atoi(tokens[1].c_str()));
+        {
+            const char *start = tokens[i].c_str();
+            long port = std::strtol(start, &end, 10);
+            if (start != end && *end == '\0' && port >= 0 && port <=  65535)
+            {
+                current_server.addPort(static_cast <int> (port));
+            }   
+            else 
+	        {
+                std::cerr << "Invalid port number: " << port << std::endl;
+                std::exit(1);
+	        }
+        }
+            
     }
     else if (tokens[0] == "host")
         current_server.setHost(tokens[1]);
@@ -107,10 +122,10 @@ Config Config::readConfig(const std::string &filename)
 
     while (std::getline(file, line))
     {
-        line.erase(std::remove_if(line.begin(), line.end(), ::isspace), line.end());
+        //line.erase(std::remove_if(line.begin(), line.end(), ::isspace), line.end());
         if (line.empty() || line[0] == '#' || line[0] == ';')
             continue;
-        if (line == "server{") 
+        if (line == "server {") 
         {
             in_server_block = true;
             current_server = ServerConfig();
@@ -136,7 +151,7 @@ Config Config::readConfig(const std::string &filename)
         }
 		else if (line == "error_page {")
             in_error_page_block = true;
-		else if (in_server_block && !in_location_block && !in_error_page_block) 
+		else if (in_server_block && !in_location_block && !in_error_page_block)
             server(tokens, line, current_server);
         else if (in_location_block)
             location(tokens, line, current_location);

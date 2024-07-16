@@ -15,10 +15,10 @@ ServerConfig &ServerConfig::operator=(ServerConfig const &other)
 
 ServerConfig::~ServerConfig(){}
 
-void ServerConfig::setListen(int l)
-{ 
-	listen = l;
-}
+// void ServerConfig::setListen(int l)
+// { 
+// 	listen = l;
+// }
 
 void ServerConfig::setHost(const std::string &h)
 { 
@@ -50,10 +50,21 @@ void ServerConfig::addErrorPage(const ErrorPageConfig &error)
 	error_pages.push_back(error);
 }
 
-int ServerConfig::getListen() const {return this->listen;}
-std::string ServerConfig::getHost() const {return this->host;}
+int ServerConfig::getListen() const 
+{	
+	return (this->listen);
+}
+std::string ServerConfig::getHost() const 
+{ 
+	return (this->host);
+}
 
-void ServerConfig::addHost(const std::string &portNumber)
+std::vector<int> ServerConfig::getPorts() const
+{
+	return (this->ports);
+}
+
+void ServerConfig::addPort(int portNumber)
 { 
 	ports.push_back(portNumber);
 }

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <iostream>
 #include <vector>
 #include <map>
 #include <sstream>
@@ -16,9 +17,9 @@ public:
     ServerConfig &operator=(ServerConfig const &other);
     ~ServerConfig();
 
-    void setListen(int l);
+    //void setListen(int l);
     void setHost(const std::string &h);
-    void addHost(const std::string &portNumber);
+    void addPort(int portNumber);
     void setServerName(const std::string &name);
     void setClientMaxBodySize(int size);
     void setRoot(const std::string &rt);
@@ -32,6 +33,7 @@ public:
     std::string getRoot() const;
     std::vector<LocationConfig> getLocations() const;
     std::vector<ErrorPageConfig> getErrorPages() const;
+    std::vector<int> getPorts() const;
 
 private:
 
@@ -40,7 +42,7 @@ private:
     std::string server_name;
     int client_max_body_size;
     std::string root;
-    std::vector<std::string> ports;
+    std::vector<int> ports;
     std::vector<LocationConfig> locations;
     std::vector<ErrorPageConfig> error_pages;
 };
