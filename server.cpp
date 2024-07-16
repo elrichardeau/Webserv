@@ -19,7 +19,7 @@ int main() {
     struct epoll_event event;
     struct epoll_event events[MAX_EVENTS];
 
-    // Créer le socket du serveur
+    // Créer les sockets serveur : tableau avec le nb de fd serveur
     server_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (server_fd == 0) {
         perror("socket failed");
@@ -73,7 +73,7 @@ int main() {
         for (int i = 0; i < nfds; ++i) {
             if (events[i].data.fd == server_fd) {
                 // Nouvelle connexion
-                client_fd = accept(server_fd, (struct sockaddr *)&address, (socklen_t *)&addrlen);
+                client_fd = accept(events[i].data.fd, (struct sockaddr *)&address, (socklen_t *)&addrlen);
                 if (client_fd == -1) {
                     perror("accept failed");
                     exit(EXIT_FAILURE);
@@ -88,11 +88,11 @@ int main() {
             } else {
                 // Lire les données du client
                 char buffer[1024] = {0};
-                int valread = read(events[i].data.fd, buffer, 1024);
-                if (valread == 0) {
-                    // Déconnexion du client car aucune donnée reçue, le client a fini sa connexion
+                if (recv(client_fd, buffer, 1024, 0) == -1){
+                    perror("recv failed");
                     close(events[i].data.fd);
-                } else {
+                }
+                else {
 					//insérer la fonction de parsing de la requête ici
 					//insérer la fonction de réponse aux requêtes ici
                     std::cout << "Message received: " << buffer << std::endl;
