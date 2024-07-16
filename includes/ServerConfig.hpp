@@ -18,6 +18,7 @@ public:
 
     void setListen(int l);
     void setHost(const std::string &h);
+    void addHost(const std::string &portNumber);
     void setServerName(const std::string &name);
     void setClientMaxBodySize(int size);
     void setRoot(const std::string &rt);
@@ -39,6 +40,7 @@ private:
     std::string server_name;
     int client_max_body_size;
     std::string root;
+    std::vector<std::string> ports;
     std::vector<LocationConfig> locations;
     std::vector<ErrorPageConfig> error_pages;
 };

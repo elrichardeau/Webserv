@@ -50,16 +50,13 @@ void ServerConfig::addErrorPage(const ErrorPageConfig &error)
 	error_pages.push_back(error);
 }
 
-int ServerConfig::getListen() const
-{ 
-	return listen;
-}
+int ServerConfig::getListen() const {return this->listen;}
+std::string ServerConfig::getHost() const {return this->host;}
 
-std::string ServerConfig::getHost() const
+void ServerConfig::addHost(const std::string &portNumber)
 { 
-	return host; 
+	ports.push_back(portNumber);
 }
-
 std::string ServerConfig::getServerName() const
 { 
 	return server_name;

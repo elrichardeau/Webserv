@@ -67,7 +67,10 @@ void Config::server(std::vector<std::string> tokens, std::string line, ServerCon
 {
     tokens = Config::split(line, ' ');
     if (tokens[0] == "listen")
-        current_server.setListen(std::atoi(tokens[1].c_str()));
+    {
+        for (size_t i = 1; i < tokens.size(); ++i)
+            current_server.setListen(std::atoi(tokens[1].c_str()));
+    }
     else if (tokens[0] == "host")
         current_server.setHost(tokens[1]);
     else if (tokens[0] == "server_name")
