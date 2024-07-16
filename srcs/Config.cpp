@@ -69,19 +69,20 @@ void Config::server(std::vector<std::string> tokens, std::string line, ServerCon
     tokens = Config::split(line, ' ');
     if (tokens[0] == "listen")
     {
-        char *end;
+        char *buf;
         for (size_t i = 1; i < tokens.size(); ++i)
         {
-            const char *start = tokens[i].c_str();
-            long port = std::strtol(start, &end, 10);
-            if (start != end && *end == '\0' && port >= 0 && port <=  65535)
+            std::string start = tokens[i];
+            long port = std::strtol(start.c_str(), &buf, 10);
+            std::string end = buf;
+            if ((end == "\0" || end == ";") && port >= 0 && port <=  65535)
             {
                 current_server.addPort(static_cast <int> (port));
             }   
             else 
 	        {
-                std::cerr << "Invalid port number: " << port << std::endl;
-                std::exit(1);
+                std::cerr << "Invalid port number" << std::endl;
+                exit(1);
 	        }
         }
             

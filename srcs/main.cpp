@@ -23,7 +23,8 @@ int main(int argc, char **argv)
     std::string filename = argv[1];
     try
     {
-        Config::readConfig(filename);
+        Config config;
+        config.readConfig(filename);
         int server_fd, client_socket, epoll_fd; // Déclaration des descripteurs de fichiers
         struct sockaddr_in address; // Structure pour stocker les adresses IP et les numéros de port pour IPv4
         int opt = 1; // Option pour permettre le redémarrage rapide du serveur
@@ -31,6 +32,8 @@ int main(int argc, char **argv)
         char buffer[1024] = {0}; // Buffer pour stocker les données reçues
 
         // Création de la socket
+        std::cout << "NB SERVEURS = " << config.getServers().size();
+        std::cout << "aa" << std::endl;
         server_fd = socket(AF_INET, SOCK_STREAM, 0);
         if (server_fd == -1)
         {
