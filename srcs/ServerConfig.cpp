@@ -22,22 +22,22 @@ ServerConfig::~ServerConfig(){}
 
 void ServerConfig::setHost(const std::string &h)
 { 
-	host = h;
+	this->host = h;
 }
 
 void ServerConfig::setServerName(const std::string &name)
 { 
-	server_name = name; 
+	this->server_name = name; 
 }
 
 void ServerConfig::setClientMaxBodySize(int size)
 { 
-	client_max_body_size = size;
+	this->client_max_body_size = size;
 }
 
 void ServerConfig::setRoot(const std::string &rt)
 { 
-	root = rt;
+	this->root = rt;
 }
 
 void ServerConfig::addLocation(const LocationConfig &loc) 
@@ -70,25 +70,25 @@ void ServerConfig::addPort(int portNumber)
 }
 std::string ServerConfig::getServerName() const
 { 
-	return server_name;
+	return (this->server_name);
 }
 
 int ServerConfig::getClientMaxBodySize() const
 { 
-	return client_max_body_size;
+	return (this->client_max_body_size);
 }
 
 std::string ServerConfig::getRoot() const 
 { 
-	return root;
+	return (this->root);
 }
 
 std::vector<LocationConfig> ServerConfig::getLocations() const 
 { 
-	return locations;
+	return (this->locations);
 }
 
 std::vector<ErrorPageConfig> ServerConfig::getErrorPages() const
 {
-	return error_pages; 
+	return (this->error_pages); 
 }

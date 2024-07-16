@@ -17,20 +17,20 @@ ErrorPageConfig::~ErrorPageConfig(){}
 
 void ErrorPageConfig::setCode(int c)
 { 
-	code = c;
+	this->code = c;
 }
 
 void ErrorPageConfig::setPath(const std::string &p)
 { 
-	path = p;
+	this->path = p;
 }
 
 int ErrorPageConfig::getCode() const
 { 
-	return code;
+	return (this->code);
 }
 
 std::string ErrorPageConfig::getPath() const
 { 
-	return path;
+	return (this->path);
 }

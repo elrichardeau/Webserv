@@ -17,7 +17,7 @@ LocationConfig::~LocationConfig()
 
 void LocationConfig::setPath(const std::string &p)
 { 
-	path = p; 
+	this->path = p; 
 }
 
 void LocationConfig::addAllowMethod(const std::string &method)
@@ -27,12 +27,12 @@ void LocationConfig::addAllowMethod(const std::string &method)
 
 void LocationConfig::setIndex(const std::string &idx) 
 { 
-	index = idx; 
+	this->index = idx; 
 }
 
 void LocationConfig::setRoot(const std::string &rt)
 { 
-	root = rt; 
+	this->root = rt; 
 }
 
 void LocationConfig::addCgiExtension(const std::string &ext)
@@ -47,40 +47,40 @@ void LocationConfig::addCgiPath(const std::string &ext, const std::string &path)
 
 void LocationConfig::setUploadDir(const std::string &dir)
 { 
-	upload_dir = dir;
+	this->upload_dir = dir;
 }
 
 std::string LocationConfig::getPath() const
 { 
-	return path; 
+	return (this->path); 
 }
 
 std::vector<std::string> LocationConfig::getAllowMethods() const
 {
-	return allow_methods; 
+	return (this->allow_methods); 
 }
 
 std::string LocationConfig::getIndex() const
 { 
-	return index; 
+	return (this->index); 
 }
 
 std::string LocationConfig::getRoot() const
 { 
-	return root;
+	return (this->root);
 }
 
 std::vector<std::string> LocationConfig::getCgiExtensions() const
 { 
-	return cgi_extension;
+	return (this->cgi_extension);
 }
 
 std::map<std::string, std::string> LocationConfig::getCgiPaths() const
 { 
-	return cgi_path;
+	return (this->cgi_path);
 }
 
 std::string LocationConfig::getUploadDir() const
 { 
-	return upload_dir;
+	return (this->upload_dir);
 }
