@@ -26,6 +26,43 @@ std::vector<ServerConfig> Config::getServers() const
 	return (servers); 
 }
 
+bool isValidIPAddress(const std::string& ip)
+{
+    int dots;
+    char prev;
+
+    dots = 0;
+    prev = ' ';
+    for (size_t i = 0; i < ip.length(); ++i) 
+    {
+        char c = ip[i];
+        if (c == '.')
+        {
+            if (prev == '.' || prev == ' ')
+                return (false);
+            if (dots++ > 3)
+                return (false);
+        }
+        else if (!isdigit(c))
+            return (false);
+        prev = c;
+    }
+    if (prev == '.')
+        return (false);
+    std::istringstream iss(ip);
+    std::string byte;
+    while (std::getline(iss, byte, '.'))
+    {
+        if (byte.empty() || atoi(byte.c_str()) > 255 || atoi(byte.c_str()) < 0)
+            return (false);
+        if (byte.size() > 1 && byte[0] == '0')
+            return (false);
+    }
+    if (dots == 3)
+        return (true);
+    return (false);
+}
+
 std::vector<std::string> Config::split(const std::string &str, char delimiter)
 {
     std::vector<std::string> tokens;
@@ -33,9 +70,10 @@ std::vector<std::string> Config::split(const std::string &str, char delimiter)
     std::istringstream tokenStream(str);
     while (std::getline(tokenStream, token, delimiter))
     {
+        token.erase(std::remove_if(token.begin(), token.end(), ::isspace), token.end());
         if (!token.empty())
             tokens.push_back(token);
-        std::cout << "Split token: " << token << std::endl;
+        //std::cout << "Split token: " << token << std::endl;
     }
     return (tokens);
 }
@@ -43,56 +81,33 @@ std::vector<std::string> Config::split(const std::string &str, char delimiter)
 void Config::location(std::vector<std::string> &tokens, std::string line, LocationConfig &current_location)
 {
     tokens = Config::split(line, ' ');
-    std::cout << "Processing location line: " << line << std::endl;
     if (tokens[0] == "allow_methods")
     {
         for (size_t i = 1; i < tokens.size(); ++i)
-        {
-            current_location.addAllowMethod(tokens[i]);
-            std::cout << "Added allow method: " << tokens[i] << std::endl;
-        }
-            
+            current_location.addAllowMethod(tokens[i]);    
     } 
     else if (tokens[0] == "index")
-    {
         current_location.setIndex(tokens[1]);
-        std::cout << "Added index: " << tokens[1] << std::endl;
-    }
     else if (tokens[0] == "root")
-    {
         current_location.setRoot(tokens[1]);
-        std::cout << "Added root: " << tokens[1] << std::endl;
-    }
     else if (tokens[0] == "cgi_extension") 
     {
         for (size_t i = 1; i < tokens.size(); ++i)
-        {
             current_location.addCgiExtension(tokens[i]);
-            std::cout << "Added cgi_extension: " << tokens[i] << std::endl;
-        }
-            
     }
     else if (tokens[0] == "cgi_path")
     {
         for (size_t i = 1; i < tokens.size(); i += 2)
-        {
             current_location.addCgiPath(tokens[i], tokens[i + 1]);
-            std::cout << "Added cgi_path: " << tokens[i] << std::endl;
-        }
-            
     } 
     else if (tokens[0] == "upload_dir")
-    {
         current_location.setUploadDir(tokens[1]);
-        std::cout << "Added upload_dir: " << tokens[1] << std::endl;
-    }
         
 }
 
 void Config::server(std::vector<std::string> &tokens, std::string line, ServerConfig &current_server)
 {
     tokens = Config::split(line, ' ');
-    std::cout << "Processing server line: " << line << std::endl;
     if (tokens[0] == "listen")
     {
         char *buf;
@@ -102,10 +117,7 @@ void Config::server(std::vector<std::string> &tokens, std::string line, ServerCo
             long port = std::strtol(start.c_str(), &buf, 10);
             std::string end = buf;
             if ((end == "\0" || end == ";") && port >= 0 && port <=  65535)
-            {
                 current_server.addPort(static_cast <int> (port));
-                std::cout << "Added port: " << port << std::endl;
-            }   
             else 
 	        {
                 std::cerr << "Invalid port number" << std::endl;
@@ -116,28 +128,23 @@ void Config::server(std::vector<std::string> &tokens, std::string line, ServerCo
     }
     else if (tokens[0] == "host")
     {
-        current_server.setHost(tokens[1]);
-        std::cout << "Added host: " << tokens[1] << std::endl;
+        std::string cleanIP;
+
+        cleanIP = tokens[1];
+        size_t semicolon = cleanIP.find(";");
+        if (semicolon != std::string::npos)
+            cleanIP = cleanIP.substr(0, semicolon);
+        if (!isValidIPAddress(cleanIP))
+            std::cout << "Host invalid" << std::endl;
+        else
+            current_server.setHost(cleanIP);  
     }
-        
     else if (tokens[0] == "server_name")
-    {
         current_server.setServerName(tokens[1]);
-        std::cout << "Added server_name: " << tokens[1] << std::endl;
-    }
-        
     else if (tokens[0] == "client_max_body_size")
-    {
         current_server.setClientMaxBodySize(std::atoi(tokens[1].c_str()));
-        std::cout << "Added client max body size: " << tokens[1] << std::endl;
-    }
-        
     else if (tokens[0] == "root")
-    {
-        current_server.setRoot(tokens[1]);
-        std::cout << "Added root: " << tokens[1] << std::endl;
-    }
-        
+        current_server.setRoot(tokens[1]);       
 }
 
 void Config::errorPage(std::vector<std::string> &tokens, std::string line, ServerConfig &current_server)
@@ -147,7 +154,6 @@ void Config::errorPage(std::vector<std::string> &tokens, std::string line, Serve
     error_page.setCode(std::atoi(tokens[0].c_str()));
     error_page.setPath(tokens[1]);
     current_server.addErrorPage(error_page);
-    std::cout << "Added error page: " << tokens[1] << std::endl;
 }
 
 Config Config::readConfig(const std::string &filename)
@@ -165,11 +171,8 @@ Config Config::readConfig(const std::string &filename)
 	bool in_error_page_block = false;
 	std::vector<std::string> tokens;
 
-    std::cout << "Starting to read configuration file: " << filename << std::endl;
     while (std::getline(file, line))
     {
-        std::cout << "Read line: " << line << std::endl; 
-        //line.erase(std::remove_if(line.begin(), line.end(), ::isspace), line.end());
         if (line.empty() || line[0] == '#' || line[0] == ';')
             continue;
         if (line == "server {") 

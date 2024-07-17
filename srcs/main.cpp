@@ -20,12 +20,9 @@ int main(int argc, char **argv)
         std::cerr << "2 args required." << std::endl;
         exit(1);
     }
-    //std::string filename = argv[1];
-    Config config;
-    // std::cout << "Config object address: " << &config << std::endl;
     try
     {
-        config = Config::readConfig(argv[1]);
+        Config config = Config::readConfig(argv[1]);
         std::cout << "Servers loaded: " << config.getServers().size() << std::endl;
     }
     catch (const std::exception &e)
