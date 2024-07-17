@@ -6,7 +6,7 @@
 /*   By: elrichar <elrichar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/07/15 11:56:05 by niromano          #+#    #+#             */
-/*   Updated: 2024/07/16 14:56:30 by elrichar         ###   ########.fr       */
+/*   Updated: 2024/07/17 17:14:14 by elrichar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -50,6 +50,75 @@ bool Requests::isSyntaxError() {
 	return false;
 }
 
+
+std::vector<std::string> Requests::split(std::string buf, const std::string& find) 
+{
+    std::vector<std::string> vector;
+    for (int i = 0; !buf.empty(); i++) {
+        vector.push_back(buf.substr(0, buf.find(find)));
+        buf.erase(0, vector[i].size() + 1);
+    }
+    return vector;
+}
+
+std::string readFromPipe(int pipeFd)
+{
+	char buffer[4096];
+	std::string result;
+	ssize_t bytesRead = read(pipeFd, buffer, 4096 - 1);
+	if (bytesRead == -1)
+			return ("HTTP/1.1 500 Internal Server Error");
+
+	while (bytesRead  > 0)
+	{
+		if (bytesRead == -1)
+			return ("HTTP/1.1 500 Internal Server Error");
+		buffer[bytesRead] = '\0';
+		result += buffer;
+		bytesRead = read(pipeFd, buffer, 4096 - 1);
+	}
+	return (result);
+}
+
+std::string  Requests::execCgi(const std::string& scriptType)
+{
+	int childPid;
+	int fd[2];
+
+	if (pipe(fd) == -1)
+		return (getPage("error/500.html", "HTTP/1.1 500 Internal Server Error"));
+	childPid = fork();
+	if (childPid == -1)
+		return (getPage("error/500.html", "HTTP/1.1 500 Internal Server Error"));
+	
+	if (!childPid)
+	{
+		if (scriptType == "py")
+			char *scriptInterpreter = (this->_scriptInterpreterPy).c_str();
+		else
+			char *scriptInterpreter = (this->_scriptInterpreterPhp).c_str();
+		
+		//char **env = createEnv();
+		char **env = NULL;
+		char *args[] = { const_cast<char*>(scriptInterpreter), const_cast<char*>(_path.c_str()), NULL };
+
+		
+		close(fd[0]);
+		if (dup2(fd[1], STDOUT_FILENO))
+			return (delete [] env, getPage("error/500.html", "HTTP/1.1 500 Internal Server Error\n\n"));
+		close(fd[1]);
+		execve(scriptInterpreter, args, env);
+		return (delete [] env, getPage("error/500.html", "HTTP/1.1 500 Internal Server Error\n\n"));
+	}
+	close(fd[1]);
+    std::string scriptContent = readFromPipe(fd[0]);
+	if (!scriptContent.compare("HTTP/1.1 500 Internal Server Error"))
+		return (close(fd[0]), getPage("error/500.html", "HTTP/1.1 500 Internal Server Error\n\n"));
+	close(fd[0]);
+	return getPage(scriptContent, "HTTP/1.1 200 OK\n\n");
+}
+
+
 std::string Requests::getResponse() {
 	chdir("./pages");
 	if (isSyntaxError())
@@ -60,5 +129,17 @@ std::string Requests::getResponse() {
 		return getPage("error/403.html", "HTTP/1.1 403 Forbidden\n\n");
 	if (this->_path == "./")
 		return getPage("default.html", "HTTP/1.1 200 OK\n\n");
+	
+	//partie cgi elodie
+	std::vector<std::string> words = Requests::split(this->_path, ".");
+	int nb_words = words.size();
+	if (nb_words == 1)
+		return getPage("error/400.html", "HTTP/1.1 400 Bad Request\n\n");
+	if (words[nb_words - 1] == "py" || words[nb_words - 1] == "php")
+	{
+		if (access((this->_path).c_str(), X_OK))
+			return getPage("error/403.html", "HTTP/1.1 403 Forbidden\n\n");
+		return (execCgi(words[nb_words - 1]));
+	}
 	return getPage(this->_path, "HTTP/1.1 200 OK\n\n");
 }
