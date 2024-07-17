@@ -71,9 +71,11 @@ std::vector<std::string> Config::split(const std::string &str, char delimiter)
     while (std::getline(tokenStream, token, delimiter))
     {
         token.erase(std::remove_if(token.begin(), token.end(), ::isspace), token.end());
+        if (!token.empty() && token[token.length() - 1] == ';')
+            token.erase(token.length() - 1);
         if (!token.empty())
             tokens.push_back(token);
-        //std::cout << "Split token: " << token << std::endl;
+        std::cout << "Split token: " << token << std::endl;
     }
     return (tokens);
 }
@@ -87,6 +89,7 @@ void Config::location(std::vector<std::string> &tokens, std::string line, Locati
             current_location.addAllowMethod(tokens[i]);    
     } 
     else if (tokens[0] == "index")
+
         current_location.setIndex(tokens[1]);
     else if (tokens[0] == "root")
         current_location.setRoot(tokens[1]);
@@ -116,35 +119,40 @@ void Config::server(std::vector<std::string> &tokens, std::string line, ServerCo
             std::string start = tokens[i];
             long port = std::strtol(start.c_str(), &buf, 10);
             std::string end = buf;
-            if ((end == "\0" || end == ";") && port >= 0 && port <=  65535)
+            if (end == "\0" && port >= 0 && port <=  65535)
                 current_server.addPort(static_cast <int> (port));
             else 
 	        {
                 std::cerr << "Invalid port number" << std::endl;
                 exit(1);
 	        }
-        }
-            
+        }  
     }
     else if (tokens[0] == "host")
     {
-        std::string cleanIP;
-
-        cleanIP = tokens[1];
-        size_t semicolon = cleanIP.find(";");
-        if (semicolon != std::string::npos)
-            cleanIP = cleanIP.substr(0, semicolon);
-        if (!isValidIPAddress(cleanIP))
-            std::cout << "Host invalid" << std::endl;
-        else
-            current_server.setHost(cleanIP);  
+        if (!isValidIPAddress(tokens[1]))
+        {
+            std::cerr << "Host invalid" << std::endl;
+            exit(1);
+        }
+        current_server.setHost(tokens[1]);  
     }
     else if (tokens[0] == "server_name")
         current_server.setServerName(tokens[1]);
     else if (tokens[0] == "client_max_body_size")
+    {
+        char *end;
+        std::string body = tokens[1];
+        long bodyInt = std::strtol(body.c_str(), &end, 10);
+        if (*end != '\0' || bodyInt < 0)
+        {
+            std::cerr << "Invalid client max body" << std::endl;
+            exit(1);
+        }
         current_server.setClientMaxBodySize(std::atoi(tokens[1].c_str()));
-    else if (tokens[0] == "root")
-        current_server.setRoot(tokens[1]);       
+    }
+    //else if (tokens[0] == "root")
+    //     current_server.setRoot(tokens[1]); 
 }
 
 void Config::errorPage(std::vector<std::string> &tokens, std::string line, ServerConfig &current_server)

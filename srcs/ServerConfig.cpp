@@ -35,10 +35,10 @@ void ServerConfig::setClientMaxBodySize(int size)
 	this->client_max_body_size = size;
 }
 
-void ServerConfig::setRoot(const std::string &rt)
-{ 
-	this->root = rt;
-}
+// void ServerConfig::setRoot(const std::string &rt)
+// { 
+// 	this->root = rt;
+// }
 
 void ServerConfig::addLocation(const LocationConfig &loc) 
 { 
@@ -50,10 +50,10 @@ void ServerConfig::addErrorPage(const ErrorPageConfig &error)
 	error_pages.push_back(error);
 }
 
-int ServerConfig::getListen() const 
-{	
-	return (this->listen);
-}
+// int ServerConfig::getListen() const 
+// {	
+// 	return (this->listen);
+// }
 std::string ServerConfig::getHost() const 
 { 
 	return (this->host);
@@ -78,10 +78,10 @@ int ServerConfig::getClientMaxBodySize() const
 	return (this->client_max_body_size);
 }
 
-std::string ServerConfig::getRoot() const 
-{ 
-	return (this->root);
-}
+// std::string ServerConfig::getRoot() const 
+// { 
+// 	return (this->root);
+// }
 
 std::vector<LocationConfig> ServerConfig::getLocations() const 
 { 

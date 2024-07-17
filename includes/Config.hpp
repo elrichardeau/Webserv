@@ -29,7 +29,7 @@ class Config
 		static void errorPage(std::vector<std::string> &tokens, std::string line, ServerConfig &current_server);
 	private:
 		std::vector<ServerConfig> servers;
-
+	
 	class Openfile : public std::exception
 	{
 		public:

@@ -22,7 +22,7 @@ public:
     void addPort(int portNumber);
     void setServerName(const std::string &name);
     void setClientMaxBodySize(int size);
-    void setRoot(const std::string &rt);
+    //void setRoot(const std::string &rt);
     void addLocation(const LocationConfig &loc);
     void addErrorPage(const ErrorPageConfig &error);
 
@@ -37,12 +37,14 @@ public:
 
 private:
 
-    int listen;
+    //int listen;
     std::string host;
     std::string server_name;
     int client_max_body_size;
-    std::string root;
+    //std::string root;
     std::vector<int> ports;
     std::vector<LocationConfig> locations;
     std::vector<ErrorPageConfig> error_pages;
+    std::vector<int> serverSocket;
+
 };
