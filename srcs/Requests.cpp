@@ -6,7 +6,7 @@
 /*   By: elrichar <elrichar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/07/15 11:56:05 by niromano          #+#    #+#             */
-/*   Updated: 2024/07/17 17:14:14 by elrichar         ###   ########.fr       */
+/*   Updated: 2024/07/18 17:56:50 by elrichar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -80,6 +80,13 @@ std::string readFromPipe(int pipeFd)
 	return (result);
 }
 
+
+// char** 		 Requests::createEnv()
+// {
+// 	parcourir la classe contenant toutes les vars dont j'ai besoin et creer un char **
+// 
+// }
+
 std::string  Requests::execCgi(const std::string& scriptType)
 {
 	int childPid;
@@ -91,6 +98,10 @@ std::string  Requests::execCgi(const std::string& scriptType)
 	if (childPid == -1)
 		return (getPage("error/500.html", "HTTP/1.1 500 Internal Server Error"));
 	
+	//if (la requete est de type POST)
+	//je cree un pipe dans lequel j'ecris avec write le body dont a besoin mon script CGI
+	//
+
 	if (!childPid)
 	{
 		if (scriptType == "py")
