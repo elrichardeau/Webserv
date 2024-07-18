@@ -23,4 +23,5 @@ class ErrorPageConfig
 	private:
 		int code;
 		std::string path;
+		//CREER UNE MAP contenant les deux valeurs et faire un getter pour qu'il recupere les donnees 
 };
