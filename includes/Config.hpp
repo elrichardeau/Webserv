@@ -30,12 +30,16 @@ class Config
 	private:
 		std::vector<ServerConfig> servers;
 	
-	class Openfile : public std::exception
+	class InvalidConfig : public std::exception
 	{
 		public:
+		InvalidConfig(const std::string &message) : _message(message) {}
 		virtual const char *what(void) const throw()
 		{
-			return ("Error: could not open file.");
+			return (_message.c_str());
 		}
+		virtual ~InvalidConfig() throw(){}
+		private:
+			std::string _message;
 	};
 };

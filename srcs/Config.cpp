@@ -26,7 +26,7 @@ std::vector<ServerConfig> Config::getServers() const
 	return (servers); 
 }
 
-bool isValidIPAddress(const std::string& ip)
+bool isValidIPAddress(const std::string &ip)
 {
     int dots;
     char prev;
@@ -85,8 +85,17 @@ void Config::location(std::vector<std::string> &tokens, std::string line, Locati
     tokens = Config::split(line, ' ');
     if (tokens[0] == "allow_methods")
     {
-        for (size_t i = 1; i < tokens.size(); ++i)
-            current_location.addAllowMethod(tokens[i]);    
+        if (tokens.size() != 4)
+        {
+            std::cout << tokens.size() << std::endl;
+            throw InvalidConfig("Error: Invalid allow methods.");
+        }  
+        else
+        {
+            for (size_t i = 1; i < 4; ++i)
+                current_location.addAllowMethod(tokens[i]);     
+        }
+           
     } 
     else if (tokens[0] == "index")
 
@@ -113,6 +122,8 @@ void Config::server(std::vector<std::string> &tokens, std::string line, ServerCo
     tokens = Config::split(line, ' ');
     if (tokens[0] == "listen")
     {
+        if (tokens.size() < 2)
+            throw InvalidConfig("Error: No port number specified.");
         char *buf;
         for (size_t i = 1; i < tokens.size(); ++i)
         {
@@ -122,37 +133,42 @@ void Config::server(std::vector<std::string> &tokens, std::string line, ServerCo
             if (end == "\0" && port >= 0 && port <=  65535)
                 current_server.addPort(static_cast <int> (port));
             else 
-	        {
-                std::cerr << "Invalid port number" << std::endl;
-                exit(1);
-	        }
+                throw InvalidConfig("Error: Invalid port number.");
         }  
     }
     else if (tokens[0] == "host")
     {
+        if (tokens.size() < 2)
+            throw InvalidConfig("Error: No host specified.");
         if (!isValidIPAddress(tokens[1]))
-        {
-            std::cerr << "Host invalid" << std::endl;
-            exit(1);
-        }
+            throw InvalidConfig("Error: Invalid host.");
         current_server.setHost(tokens[1]);  
     }
     else if (tokens[0] == "server_name")
+    {
+        if (tokens.size() != 2)
+            throw InvalidConfig("Error: Invalid number of server_name."); 
         current_server.setServerName(tokens[1]);
+    }
     else if (tokens[0] == "client_max_body_size")
     {
+        if (tokens.size() < 2)
+            throw InvalidConfig("Error: No client max body specified.");
         char *end;
         std::string body = tokens[1];
+        if (body.find("-") != std::string::npos || body.find("+") != std::string::npos)
+            throw InvalidConfig("Error: Invalid client max body size.");
         long bodyInt = std::strtol(body.c_str(), &end, 10);
-        if (*end != '\0' || bodyInt < 0)
-        {
-            std::cerr << "Invalid client max body" << std::endl;
-            exit(1);
-        }
-        current_server.setClientMaxBodySize(std::atoi(tokens[1].c_str()));
+        if (*end != '\0' || bodyInt < 0 || bodyInt >= 1000000)
+            throw InvalidConfig("Error: Invalid client max body size.");
+        current_server.setClientMaxBodySize(static_cast<int> (bodyInt));
     }
-    //else if (tokens[0] == "root")
-    //     current_server.setRoot(tokens[1]); 
+    else if (tokens[0] == "root")
+    {
+        if (tokens.size() < 2)
+            throw InvalidConfig("Error: No root specified.");
+        current_server.setRoot(tokens[1]); 
+    }
 }
 
 void Config::errorPage(std::vector<std::string> &tokens, std::string line, ServerConfig &current_server)
@@ -168,7 +184,7 @@ Config Config::readConfig(const std::string &filename)
 {
     std::ifstream file(filename.c_str());
     if (!file.is_open())
-        throw Openfile();
+        throw InvalidConfig("Error: couldn't open file.");
 
     std::string line;
     Config Config;
