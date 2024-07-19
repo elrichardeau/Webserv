@@ -6,7 +6,7 @@
 /*   By: elrichar <elrichar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/07/15 11:56:05 by niromano          #+#    #+#             */
-/*   Updated: 2024/07/18 17:56:50 by elrichar         ###   ########.fr       */
+/*   Updated: 2024/07/19 14:33:47 by elrichar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -84,13 +84,16 @@ std::string readFromPipe(int pipeFd)
 // char** 		 Requests::createEnv()
 // {
 // 	parcourir la classe contenant toutes les vars dont j'ai besoin et creer un char **
-// 
+//  faire un std::map et le convertir et char **
 // }
 
 std::string  Requests::execCgi(const std::string& scriptType)
 {
 	int childPid;
 	int fd[2];
+	int fdBody[2];
+	char *scriptInterpreter;
+
 
 	if (pipe(fd) == -1)
 		return (getPage("error/500.html", "HTTP/1.1 500 Internal Server Error"));
@@ -98,29 +101,49 @@ std::string  Requests::execCgi(const std::string& scriptType)
 	if (childPid == -1)
 		return (getPage("error/500.html", "HTTP/1.1 500 Internal Server Error"));
 	
-	//if (la requete est de type POST)
-	//je cree un pipe dans lequel j'ecris avec write le body dont a besoin mon script CGI
-	//
-
+	//si POST, on crée un | pour permettre l'écriture et la lecture du body
+	if (!this->_method.compare("POST"))
+	{
+		if (pipe(fdBody) == -1)
+			return (getPage("error/500.html", "HTTP/1.1 500 Internal Server Error"));
+		if (write(fdBody[1], this->_body.c_str(), this->_body.size()))
+			return (getPage("error/500.html", "HTTP/1.1 500 Internal Server Error"));
+	}
+	
 	if (!childPid)
 	{
-		if (scriptType == "py")
-			char *scriptInterpreter = (this->_scriptInterpreterPy).c_str();
-		else
-			char *scriptInterpreter = (this->_scriptInterpreterPhp).c_str();
+		if (!this->_method.compare("POST"))
+		{
+			close(fdBody[1]);
+			if (dup2(fd[0], STDIN_FILENO))
+				return (getPage("error/500.html", "HTTP/1.1 500 Internal Server Error"));
+			close(fd[0]);
+		}
+
+		close(fd[0]);
+		if (dup2(fd[1], STDOUT_FILENO))
+			return (getPage("error/500.html", "HTTP/1.1 500 Internal Server Error\n\n"));
+		close(fd[1]);
 		
+		if (scriptType == "py")
+			scriptInterpreter = (this->_scriptInterpreterPy).c_str();
+		else
+			scriptInterpreter = (this->_scriptInterpreterPhp).c_str();
+			
 		//char **env = createEnv();
 		char **env = NULL;
 		char *args[] = { const_cast<char*>(scriptInterpreter), const_cast<char*>(_path.c_str()), NULL };
 
-		
-		close(fd[0]);
-		if (dup2(fd[1], STDOUT_FILENO))
-			return (delete [] env, getPage("error/500.html", "HTTP/1.1 500 Internal Server Error\n\n"));
-		close(fd[1]);
 		execve(scriptInterpreter, args, env);
 		return (delete [] env, getPage("error/500.html", "HTTP/1.1 500 Internal Server Error\n\n"));
 	}
+	
+	if (!this->_method.compare("POST"))
+	{
+		close(fdBody[0]);
+		close(fdBody[1]);
+	}
+
 	close(fd[1]);
     std::string scriptContent = readFromPipe(fd[0]);
 	if (!scriptContent.compare("HTTP/1.1 500 Internal Server Error"))
