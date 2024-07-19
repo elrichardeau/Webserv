@@ -6,7 +6,7 @@
 /*   By: elrichar <elrichar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/07/15 11:57:21 by niromano          #+#    #+#             */
-/*   Updated: 2024/07/18 11:54:52 by elrichar         ###   ########.fr       */
+/*   Updated: 2024/07/19 16:44:40 by elrichar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -32,6 +32,7 @@ class Requests {
 		std::vector<std::string> split(std::string str, const std::string&  delimiter);
 		std::string 			 execCgi(const std::string& scriptType);
 		// char**					 createEnv();
+		void 					assembleBody();
 		
 	private :
 

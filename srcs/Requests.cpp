@@ -6,7 +6,7 @@
 /*   By: elrichar <elrichar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/07/15 11:56:05 by niromano          #+#    #+#             */
-/*   Updated: 2024/07/19 14:33:47 by elrichar         ###   ########.fr       */
+/*   Updated: 2024/07/19 17:06:14 by elrichar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -71,11 +71,11 @@ std::string readFromPipe(int pipeFd)
 
 	while (bytesRead  > 0)
 	{
-		if (bytesRead == -1)
-			return ("HTTP/1.1 500 Internal Server Error");
 		buffer[bytesRead] = '\0';
 		result += buffer;
 		bytesRead = read(pipeFd, buffer, 4096 - 1);
+		if (bytesRead == -1)
+			return ("HTTP/1.1 500 Internal Server Error");
 	}
 	return (result);
 }
@@ -86,6 +86,12 @@ std::string readFromPipe(int pipeFd)
 // 	parcourir la classe contenant toutes les vars dont j'ai besoin et creer un char **
 //  faire un std::map et le convertir et char **
 // }
+
+void		Requests::assembleBody()
+{
+	//récupérer les chunks en parsant autour des \r\n
+}
+
 
 std::string  Requests::execCgi(const std::string& scriptType)
 {
@@ -104,6 +110,9 @@ std::string  Requests::execCgi(const std::string& scriptType)
 	//si POST, on crée un | pour permettre l'écriture et la lecture du body
 	if (!this->_method.compare("POST"))
 	{
+		if (this->_encoding.compare.compare("chunked"))
+			Request::assembleBody();
+			//fonction pour préparer le body s'il est fragmenté
 		if (pipe(fdBody) == -1)
 			return (getPage("error/500.html", "HTTP/1.1 500 Internal Server Error"));
 		if (write(fdBody[1], this->_body.c_str(), this->_body.size()))
@@ -112,6 +121,7 @@ std::string  Requests::execCgi(const std::string& scriptType)
 	
 	if (!childPid)
 	{
+		//doit-on se mettre dans le directory du cgi ?
 		if (!this->_method.compare("POST"))
 		{
 			close(fdBody[1]);
