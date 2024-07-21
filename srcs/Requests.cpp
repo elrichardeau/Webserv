@@ -6,7 +6,7 @@
 /*   By: niromano <niromano@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/07/15 11:56:05 by niromano          #+#    #+#             */
-/*   Updated: 2024/07/19 17:18:56 by niromano         ###   ########.fr       */
+/*   Updated: 2024/07/21 15:17:56 by niromano         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,15 +15,37 @@
 #include <cstring>
 #include <iostream>
 #include <fstream>
+#include <sstream>
 #include "../includes/Requests.hpp"
 
 std::vector<std::string> split(std::string buf, std::string find) {
 	std::vector<std::string> vector;
+	if (buf.find(find) == std::string::npos) {
+		vector.push_back(buf.substr(0, buf.size()));
+		return vector;
+	}
 	for (int i = 0; !buf.empty(); i++) {
 		vector.push_back(buf.substr(0, buf.find(find)));
 		buf.erase(0, vector[i].size() + 1);
 	}
 	return vector;
+}
+
+bool isMethodExisted(std::string line) {
+	std::vector<std::string> method;
+	method.push_back("GET");
+	method.push_back("HEAD");
+	method.push_back("POST");
+	method.push_back("PUT");
+	method.push_back("DELETE");
+	method.push_back("CONNECT");
+	method.push_back("OPTIONS");
+	method.push_back("TRACE");
+	method.push_back("PATCH");
+	for (unsigned int i = 0; i < method.size(); i++)
+		if (!line.compare(0, method[i].size(), method[i]))
+			return true;
+	return false;
 }
 
 bool isMethodAccepted(std::string line) {
@@ -61,29 +83,31 @@ std::vector<std::string> getAccept(std::string line) {
 
 Requests readRequest(std::string buf) {
 	std::vector<std::string> request = split(buf, "\n");
-	std::vector<std::string> methodPathProtocol, extensionAcceptedList, tmp;
+	std::vector<std::string> methodPathProtocol, acceptedList, tmp;
 	for (unsigned int i = 0; i < request.size(); i++) {
 		if (request[i].find("\r", 0) != std::string::npos)
 			request[i].erase(request[i].find("\r", 0));
-		if (isMethodAccepted(request[i])) {
+		if (isMethodExisted(request[i])) {
+			if (!methodPathProtocol.empty())
+				return Requests(BAD_REQUEST);
 			methodPathProtocol = split(request[i], " ");
 			if (methodPathProtocol.size() != 3)
-				return Requests(400);
+				return Requests(BAD_REQUEST);
 			if (!isMethodAccepted(methodPathProtocol[0]))
-				return Requests(405);
+				return Requests(METHOD_NOT_ALLOWED);
 			if (methodPathProtocol[2].compare("HTTP/1.1"))
-				return Requests(505);
+				return Requests(HTTP_VERSION_NOT_SUPPORTED);
 		}
 		if (!request[i].compare(0, 7, "Accept:")) {
 			tmp = getAccept(request[i]);
-			extensionAcceptedList.insert(extensionAcceptedList.end(), tmp.begin(), tmp.end());
+			acceptedList.insert(acceptedList.end(), tmp.begin(), tmp.end());
 		}
 	}
 	if (methodPathProtocol.empty())
-		return Requests(400);
-	if (extensionAcceptedList.empty())
-		return Requests(406);
-	return Requests(methodPathProtocol[0], methodPathProtocol[1], extensionAcceptedList);
+		return Requests(BAD_REQUEST);
+	if (acceptedList.empty())
+		return Requests(NOT_ACCEPTABLE);
+	return Requests(methodPathProtocol[0], methodPathProtocol[1], acceptedList);
 }
 
 Requests::Requests(int statusCode) : _statusCode(statusCode), _method(""), _path(""), _accept(0) {}
@@ -100,28 +124,46 @@ std::string getPage(std::string filename, std::string responseStatus) {
 	return response;
 }
 
+bool Requests::checkExtension() const {
+	std::string extension = this->_path.substr(this->_path.find_last_of(".") + 1, this->_path.size());
+	for (unsigned int i = 0; i < this->_accept.size(); i++)
+		if (this->_accept[i] == "*" || extension == this->_accept[i])
+			return true;
+	return false;
+}
+
+void Requests::checkPage() {
+	if (this->_path == "./")
+		this->_path = "./index.html";
+	if (!checkExtension())
+		this->_statusCode = 406;
+	else if (access(this->_path.c_str(), F_OK))
+		this->_statusCode = 404;
+	else if (access(this->_path.c_str(), R_OK))
+		this->_statusCode = 403;
+}
+
 std::string Requests::getResponse() {
 	chdir("./pages");
+	checkPage();
 	switch (this->_statusCode) {
 		case OK:
-			if (this->_path == "./")
-				return getPage("./default.html", "HTTP/1.1 200 OK\n\n");
 			return getPage(this->_path, "HTTP/1.1 200 OK\n\n");
 		case BAD_REQUEST:
-			return getPage("error/400.html", "HTTP/1.1 400 Not Found\n\n");
+			return getPage("error/400.html", "HTTP/1.1 400 Bad Request\n\n");
 		case FORBIDDEN:
-			return getPage("error/403.html", "HTTP/1.1 403 Not Found\n\n");
+			return getPage("error/403.html", "HTTP/1.1 403 Forbidden\n\n");
 		case NOT_FOUND:
 			return getPage("error/404.html", "HTTP/1.1 404 Not Found\n\n");
 		case METHOD_NOT_ALLOWED:
-			return getPage("error/405.html", "HTTP/1.1 405 Not Found\n\n");
+			return getPage("error/405.html", "HTTP/1.1 405 Method Not Allowed\n\n");
 		case NOT_ACCEPTABLE:
-			return getPage("error/406.html", "HTTP/1.1 406 Not Found\n\n");
+			return getPage("error/406.html", "HTTP/1.1 406 Not Acceptable\n\n");
 		case INTERNAL_SERVER_ERROR:
-			return getPage("error/500.html", "HTTP/1.1 500 Not Found\n\n");
+			return getPage("error/500.html", "HTTP/1.1 500 Internal Server Error\n\n");
 		case HTTP_VERSION_NOT_SUPPORTED:
-			return getPage("error/505.html", "HTTP/1.1 505 Not Found\n\n");
+			return getPage("error/505.html", "HTTP/1.1 505 HTTP Version not supported\n\n");
 		default:
-			return getPage("error/500.html", "HTTP/1.1 500 Not Found\n\n");
+			return getPage("error/500.html", "HTTP/1.1 500 Internal Server Error\n\n");
 	}
 }

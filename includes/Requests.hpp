@@ -6,7 +6,7 @@
 /*   By: niromano <niromano@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/07/15 11:57:21 by niromano          #+#    #+#             */
-/*   Updated: 2024/07/19 16:16:37 by niromano         ###   ########.fr       */
+/*   Updated: 2024/07/21 14:17:18 by niromano         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -34,14 +34,15 @@ class Requests {
 		Requests(const std::string &method, const std::string &path, std::vector<std::string> &accept);
 		~Requests();
 		std::string getResponse();
-		std::string getStatusCode();
 
 	private :
 
 		int _statusCode;
 		const std::string _method;
-		const std::string _path;
+		std::string _path;
 		const std::vector<std::string> _accept;
+		void checkPage();
+		bool checkExtension() const;
 };
 
 Requests readRequest(std::string buf);

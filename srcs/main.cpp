@@ -28,7 +28,6 @@ int main(int argc, char **argv)
         struct sockaddr_in address; // Structure pour stocker les adresses IP et les numéros de port pour IPv4
         int opt = 1; // Option pour permettre le redémarrage rapide du serveur
         int addrlen = sizeof(address); // Taille de la structure adresse
-        char buffer[1024] = {0}; // Buffer pour stocker les données reçues
 
         // Création de la socket
         server_fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -111,6 +110,7 @@ int main(int argc, char **argv)
                 else
                 {
                     // Lire la requête du client
+                    char buffer[1024] = {0};
                     if(recv(events[i].data.fd, buffer, 1024, 0) <= 0)
                         close(events[i].data.fd);
                     else {
