@@ -45,7 +45,7 @@ class Config
 
 		void inBlocks(bool &in_location_block, bool &in_server_block, bool &in_error_page_block, ServerConfig &current_server, LocationConfig &current_location);
 		static void configLocation(bool &in_location_block, LocationConfig &current_location, std::string line);
-	
+		static void checkLine(std::vector <std::string> validDirectives, std::vector<std::string> tokens, std::string line);
 	private:
 		std::vector<ServerConfig> servers;
 	

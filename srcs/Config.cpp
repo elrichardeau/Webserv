@@ -310,18 +310,18 @@ void Config::inBlocks(bool &in_location_block, bool &in_server_block, bool &in_e
     {
         current_server.addLocation(current_location);
         in_location_block = false;
-        std::cout << "Location block closed." << std::endl;
+        //std::cout << "Location block closed." << std::endl;
     } 
     else if (in_error_page_block)
     {
         in_error_page_block = false;
-        std::cout << "Error page block closed." << std::endl;
+        //std::cout << "Error page block closed." << std::endl;
     } 
     else if (in_server_block)
     {
         this->addServer(current_server);
         in_server_block = false;
-        std::cout << "Server block closed." << std::endl;
+        //std::cout << "Server block closed." << std::endl;
     }
 }
 
@@ -335,16 +335,72 @@ void Config::configLocation(bool &in_location_block, LocationConfig &current_loc
     if (path_end != std::string::npos)
         path_end--;
     current_location.setPath(line.substr(path_start, path_end - path_start + 1));
-    std::cout << "Location block started for path: " << current_location.getPath() << std::endl;
+    //std::cout << "Location block started for path: " << current_location.getPath() << std::endl;
 }
 
+bool endsWith(const std::string &line, char character)
+{
+    if (line.empty())
+        return (false);
+    return (line[line.size() - 1] == character);
+}
+
+bool isValidineEnding(const std::string &line)
+{
+    size_t lastNonSpace = line.find_last_not_of(" \t\n\r");
+    if (lastNonSpace == std::string::npos)
+        return (true);
+    char lastChar = line[lastNonSpace];
+    if (lastChar == ';')
+    {
+        if (lastNonSpace > 0 && (line[lastNonSpace - 1] == '{' || line[lastNonSpace - 1] == '}'))
+            return (false);
+        return (true);
+    }
+    else if (lastChar == '{' || lastChar == '}')
+    {
+        return (lastNonSpace == line.size() - 1);
+    }
+    return (false);
+}
+
+void Config::checkLine(std::vector <std::string> validDirectives, std::vector<std::string> tokens, std::string line)
+{
+    validDirectives.push_back("server");
+    validDirectives.push_back("listen");
+    validDirectives.push_back("host");
+    validDirectives.push_back("server_name");
+    validDirectives.push_back("client_max_body_size");
+    validDirectives.push_back("location");
+    validDirectives.push_back("index");
+    validDirectives.push_back("allow_methods");
+    validDirectives.push_back("autoindex");
+    validDirectives.push_back("upload_dir");
+    validDirectives.push_back("root");
+    validDirectives.push_back("cgi_extension"); 
+    validDirectives.push_back("cgi_path");
+    validDirectives.push_back("error_page");
+
+    bool isValidDirective = false;
+    for (size_t i = 0; i < tokens.size(); ++i)
+    {
+        if (std::find(validDirectives.begin(), validDirectives.end(), tokens[i]) != validDirectives.end())
+        {
+            isValidDirective = true;
+            if (!isValidineEnding(line))
+                throw InvalidConfig("Error: Invalid line.");
+            break;
+        }
+        if (!isValidDirective)
+            continue;
+    }
+}
 
 Config Config::readConfig(const std::string &filename)
 {
     std::ifstream file(filename.c_str());
     if (!file.is_open())
         throw InvalidConfig("Error: couldn't open file.");
-
     std::string line;
     Config Config;
     ServerConfig current_server;
@@ -352,35 +408,35 @@ Config Config::readConfig(const std::string &filename)
     bool in_server_block = false;
     bool in_location_block = false;
 	bool in_error_page_block = false;
+    std::vector <std::string> validDirectives;
 	std::vector<std::string> tokens;
     while (std::getline(file, line))
     {
         tokens = Config::split(line, ' ');
         line.erase(0, line.find_first_not_of(" \t\n\r"));
         line.erase(line.find_last_not_of(" \t\n\r") + 1);
-        if (line.empty() || line[0] == '#' || line[0] == ';')
+        if (line.empty())
             continue;
+        checkLine(validDirectives, tokens, line);
         if (line == "server {")
         {
             in_server_block = true;
             current_server = ServerConfig();
-            std::cout << "Server block started." << std::endl;
         }
         else if (line == "}")
             Config.inBlocks(in_location_block, in_server_block, in_error_page_block, current_server, current_location);
         else if (line.find("location") == 0 && line[line.length() - 1] == '{')
             configLocation(in_location_block, current_location, line);
         else if (line == "error_page {")
-        {
             in_error_page_block = true;
-            std::cout << "Error page block started." << std::endl;
-        } 
         else if (in_server_block && !in_location_block && !in_error_page_block)
             server(tokens, current_server);
         else if (in_location_block)
             location(tokens, current_location);
         else if (in_error_page_block)
             errorPage(tokens, current_server);
+        else
+            continue;    
     }
     return (Config);
 }
