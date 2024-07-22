@@ -20,7 +20,7 @@ class Requests {
 	public :
 
 		Requests(int statusCode);
-		Requests(const std::string &method, const std::string &path, std::vector<std::string> &accept);
+		Requests(const std::string &method, const std::string &path, const std::string &protocol, std::vector<std::string> &accept);
 		~Requests();
 		std::string getResponse();
 
@@ -29,9 +29,12 @@ class Requests {
 		int _statusCode;
 		const std::string _method;
 		std::string _path;
+		const std::string _protocol;
 		const std::vector<std::string> _accept;
+		std::string _contentType;
 		void checkPage();
-		bool checkExtension() const;
+		bool checkExtension();
+		std::string setResponse();
 };
 
 Requests readRequest(std::string buf);
