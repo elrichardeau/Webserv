@@ -6,7 +6,7 @@
 /*   By: elrichar <elrichar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/07/15 11:57:21 by niromano          #+#    #+#             */
-/*   Updated: 2024/07/19 16:44:40 by elrichar         ###   ########.fr       */
+/*   Updated: 2024/07/22 14:11:51 by elrichar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -31,9 +31,11 @@ class Requests {
 		//cgi elodie
 		std::vector<std::string> split(std::string str, const std::string&  delimiter);
 		std::string 			 execCgi(const std::string& scriptType);
-		// char**					 createEnv();
-		void 					assembleBody();
+		char**					 createEnv();
+		char **					 vectorToCharArray(const std::vector<std::string> &vector);
+	std::vector<std::string> 	 createCgiEnv();
 		
+
 	private :
 
 		const std::string _type;

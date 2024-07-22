@@ -6,7 +6,7 @@
 /*   By: elrichar <elrichar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/07/15 11:56:05 by niromano          #+#    #+#             */
-/*   Updated: 2024/07/19 17:06:14 by elrichar         ###   ########.fr       */
+/*   Updated: 2024/07/22 16:40:57 by elrichar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -81,17 +81,34 @@ std::string readFromPipe(int pipeFd)
 }
 
 
-// char** 		 Requests::createEnv()
-// {
-// 	parcourir la classe contenant toutes les vars dont j'ai besoin et creer un char **
-//  faire un std::map et le convertir et char **
-// }
-
-void		Requests::assembleBody()
+char **Requests::vectorToCharArray(const std::vector<std::string> &vector)
 {
-	//récupérer les chunks en parsant autour des \r\n
+	char** arr = new char*[vector.size() + 1];
+	
+	for (size_t i = 0; i < vector.size(); i++)
+	{
+		arr[i] = new char[vector[i].size() + 1];
+		std::copy(vector[i].begin(), vector[i].end(), arr[i]);
+		arr[i][vector[i].size()] = '\0';
+	}
+	arr[vector.size()] = NULL;
+	return (arr);
 }
 
+static void exportVar(std::vector<std::string> &env, const std::string&key, const std::string& value)
+{
+	env.push_back(key + '=' + value);
+}
+
+
+std::vector<std::string> Requests::createCgiEnv()
+{
+	std::vector<std::string> env;
+
+	exportVar(env, "REQUEST_METHOD", "_request_method");
+
+	return (env);
+}
 
 std::string  Requests::execCgi(const std::string& scriptType)
 {
@@ -110,9 +127,6 @@ std::string  Requests::execCgi(const std::string& scriptType)
 	//si POST, on crée un | pour permettre l'écriture et la lecture du body
 	if (!this->_method.compare("POST"))
 	{
-		if (this->_encoding.compare.compare("chunked"))
-			Request::assembleBody();
-			//fonction pour préparer le body s'il est fragmenté
 		if (pipe(fdBody) == -1)
 			return (getPage("error/500.html", "HTTP/1.1 500 Internal Server Error"));
 		if (write(fdBody[1], this->_body.c_str(), this->_body.size()))
@@ -121,7 +135,8 @@ std::string  Requests::execCgi(const std::string& scriptType)
 	
 	if (!childPid)
 	{
-		//doit-on se mettre dans le directory du cgi ?
+		if (chdir("./scripts") == -1)
+				return (getPage("error/500.html", "HTTP/1.1 500 Internal Server Error"));
 		if (!this->_method.compare("POST"))
 		{
 			close(fdBody[1]);
@@ -140,8 +155,7 @@ std::string  Requests::execCgi(const std::string& scriptType)
 		else
 			scriptInterpreter = (this->_scriptInterpreterPhp).c_str();
 			
-		//char **env = createEnv();
-		char **env = NULL;
+		char **env = vectorToCharArray(createCgiEnv());
 		char *args[] = { const_cast<char*>(scriptInterpreter), const_cast<char*>(_path.c_str()), NULL };
 
 		execve(scriptInterpreter, args, env);
