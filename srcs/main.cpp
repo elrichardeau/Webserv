@@ -5,7 +5,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <unistd.h>
-#include <sys/epoll.h>
+//#include <sys/epoll.h>
 #include <sstream>
 #include "../includes/Config.hpp"
 #include "../includes/Requests.hpp"
@@ -30,6 +30,7 @@ int main(int argc, char **argv)
         std::cerr << e.what() << std::endl;
         return EXIT_FAILURE; 
     }
+        /*
         int server_fd, client_socket, epoll_fd; // Déclaration des descripteurs de fichiers
         struct sockaddr_in address; // Structure pour stocker les adresses IP et les numéros de port pour IPv4
         int opt = 1; // Option pour permettre le redémarrage rapide du serveur
@@ -133,5 +134,6 @@ int main(int argc, char **argv)
 
         // Fermeture de la socket du serveur
         close(server_fd);
+    */
     return (0);
 }
