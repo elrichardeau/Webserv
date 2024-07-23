@@ -6,7 +6,7 @@
 /*   By: elrichar <elrichar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/07/15 11:56:05 by niromano          #+#    #+#             */
-/*   Updated: 2024/07/22 16:40:57 by elrichar         ###   ########.fr       */
+/*   Updated: 2024/07/23 14:59:06 by elrichar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -105,8 +105,21 @@ std::vector<std::string> Requests::createCgiEnv()
 {
 	std::vector<std::string> env;
 
-	exportVar(env, "REQUEST_METHOD", "_request_method");
+	exportVar(env, "REQUEST_METHOD", "POST");
+	exportVar(env, "SCRIPT_NAME", "script.php");
+	exportVar(env, "SERVER_PROTOCOL", "HTTP/1.1");
+	exportVar(env, "SERVER_SOFTWARE", "webserv/1.1");
+	exportVar(env, "DOCUMENT_ROOT", "/var/www/html");
+	exportVar(env, "PATH_INFO", ""); //infos supp sur la localisation de la ressource
 
+	if (!this->_method.compare("GET"))
+		exportVar(env, "QUERY_STRING", "");
+
+	else if (!this->_method.compare("POST"))
+	{
+		exportVar(env, "CONTENT_LENGTH", "");
+		exportVar(env, "CONTENT_TYPE", ""); //type decontenu du body 
+	}
 	return (env);
 }
 
@@ -115,7 +128,8 @@ std::string  Requests::execCgi(const std::string& scriptType)
 	int childPid;
 	int fd[2];
 	int fdBody[2];
-	char *scriptInterpreter;
+	const char *scriptInterpreter;
+	(void)scriptType;
 
 
 	if (pipe(fd) == -1)
@@ -127,9 +141,11 @@ std::string  Requests::execCgi(const std::string& scriptType)
 	//si POST, on crée un | pour permettre l'écriture et la lecture du body
 	if (!this->_method.compare("POST"))
 	{
+		std::string _body = "name=John+Doe&email=john.doe%40example.com&age=30";
+
 		if (pipe(fdBody) == -1)
 			return (getPage("error/500.html", "HTTP/1.1 500 Internal Server Error"));
-		if (write(fdBody[1], this->_body.c_str(), this->_body.size()))
+		if (write(fdBody[1], _body.c_str(), _body.size()))
 			return (getPage("error/500.html", "HTTP/1.1 500 Internal Server Error"));
 	}
 	
@@ -150,10 +166,11 @@ std::string  Requests::execCgi(const std::string& scriptType)
 			return (getPage("error/500.html", "HTTP/1.1 500 Internal Server Error\n\n"));
 		close(fd[1]);
 		
-		if (scriptType == "py")
-			scriptInterpreter = (this->_scriptInterpreterPy).c_str();
+	 	std::string scpttype = "py";
+		if (scpttype.compare("py"))
+			scriptInterpreter = "/usr/bin/python";
 		else
-			scriptInterpreter = (this->_scriptInterpreterPhp).c_str();
+			scriptInterpreter = "/usr/bin/php";
 			
 		char **env = vectorToCharArray(createCgiEnv());
 		char *args[] = { const_cast<char*>(scriptInterpreter), const_cast<char*>(_path.c_str()), NULL };
@@ -192,12 +209,12 @@ std::string Requests::getResponse() {
 	std::vector<std::string> words = Requests::split(this->_path, ".");
 	int nb_words = words.size();
 	if (nb_words == 1)
-		return getPage("error/400.html", "HTTP/1.1 400 Bad Request\n\n");
+		return getPage("error/400.html", "HTTP/1.1 400 Bad Request");
 	if (words[nb_words - 1] == "py" || words[nb_words - 1] == "php")
 	{
 		if (access((this->_path).c_str(), X_OK))
-			return getPage("error/403.html", "HTTP/1.1 403 Forbidden\n\n");
+			return getPage("error/403.html", "HTTP/1.1 403 Forbidden");
 		return (execCgi(words[nb_words - 1]));
 	}
-	return getPage(this->_path, "HTTP/1.1 200 OK\n\n");
+	return getPage(this->_path, "HTTP/1.1 200 OK");
 }
