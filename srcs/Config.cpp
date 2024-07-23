@@ -15,9 +15,28 @@ Config &Config::operator=(Config const &other)
 
 Config::~Config(){}
 
+bool Config::isUniqueServer(const ServerConfig& server)
+{
+    const std::vector<int> &ports = server.getPorts();
+    const std::string  &name = server.getServerName();
+
+    for (std::vector<int>::const_iterator it = ports.begin(); it != ports.end(); ++it)
+    {
+        if (std::find(usedPorts.begin(), usedPorts.end(), *it) != usedPorts.end())
+            return (false);
+    }
+    if (std::find(usedServerNames.begin(), usedServerNames.end(), name) != usedServerNames.end())
+        return (false);
+    return (true);
+}
+
 void Config::addServer(const ServerConfig &server) 
 { 
-	servers.push_back(server);
+	if (!isUniqueServer(server))
+        throw InvalidConfig("Duplicate server configuration detected.");
+    servers.push_back(server);
+    usedPorts.insert(usedPorts.end(), server.getPorts().begin(), server.getPorts().end());
+    usedServerNames.push_back(server.getServerName());
     std::cout << "Server added. Total servers: " << servers.size() << std::endl;
 }
 
@@ -210,12 +229,20 @@ void Config::root(std::vector<std::string> &tokens, LocationConfig &current_loca
 
 void Config::location(std::vector<std::string> &tokens, LocationConfig &current_location)
 {
-    allowMethods(tokens, current_location);
-    index(tokens, current_location);
-    root(tokens, current_location);
-    cgiExtensions(tokens, current_location);
-    cgiPaths(tokens, current_location);
-    uploadDir(tokens, current_location);
+    if (tokens[0].empty())
+        return;
+    if (tokens[0] == "return")
+        handleReturn(tokens, current_location);
+    else
+    {
+        allowMethods(tokens, current_location);
+        index(tokens, current_location);
+        root(tokens, current_location);
+        cgiExtensions(tokens, current_location);
+        cgiPaths(tokens, current_location);
+        uploadDir(tokens, current_location);
+    }
+    
 }
 
 void Config::listen(std::vector<std::string> &tokens, ServerConfig &current_server)
@@ -298,10 +325,9 @@ void Config::server(std::vector<std::string> &tokens, ServerConfig &current_serv
 
 void Config::errorPage(std::vector<std::string> &tokens, ServerConfig &current_server)
 {
-    ErrorPageConfig error_page;
-    error_page.setCode(std::atoi(tokens[0].c_str()));
-    error_page.setPath(tokens[1]);
-    current_server.addErrorPage(error_page);
+    ErrorPageConfig errorPages;
+    errorPages.setErrorPage(std::atoi(tokens[0].c_str()), tokens[1]);
+    current_server.addErrorPage(errorPages);
 }
 
 void Config::inBlocks(bool &in_location_block, bool &in_server_block, bool &in_error_page_block, ServerConfig &current_server, LocationConfig &current_location)
@@ -310,18 +336,13 @@ void Config::inBlocks(bool &in_location_block, bool &in_server_block, bool &in_e
     {
         current_server.addLocation(current_location);
         in_location_block = false;
-        //std::cout << "Location block closed." << std::endl;
     } 
     else if (in_error_page_block)
-    {
         in_error_page_block = false;
-        //std::cout << "Error page block closed." << std::endl;
-    } 
     else if (in_server_block)
     {
         this->addServer(current_server);
         in_server_block = false;
-        //std::cout << "Server block closed." << std::endl;
     }
 }
 
@@ -338,12 +359,6 @@ void Config::configLocation(bool &in_location_block, LocationConfig &current_loc
     //std::cout << "Location block started for path: " << current_location.getPath() << std::endl;
 }
 
-bool endsWith(const std::string &line, char character)
-{
-    if (line.empty())
-        return (false);
-    return (line[line.size() - 1] == character);
-}
 
 bool isValidineEnding(const std::string &line)
 {
@@ -353,8 +368,13 @@ bool isValidineEnding(const std::string &line)
     char lastChar = line[lastNonSpace];
     if (lastChar == ';')
     {
-        if (lastNonSpace > 0 && (line[lastNonSpace - 1] == '{' || line[lastNonSpace - 1] == '}'))
-            return (false);
+        size_t prevNonSpace = line.find_last_not_of(" \t\n\r", lastNonSpace - 1);
+        if (prevNonSpace != std::string::npos)
+        {
+            char prevChar = line[prevNonSpace];
+            if (prevChar == '{' || prevChar == '}')
+                return (false);
+        }
         return (true);
     }
     else if (lastChar == '{' || lastChar == '}')
@@ -380,6 +400,8 @@ void Config::checkLine(std::vector <std::string> validDirectives, std::vector<st
     validDirectives.push_back("cgi_extension"); 
     validDirectives.push_back("cgi_path");
     validDirectives.push_back("error_page");
+    validDirectives.push_back("}");
+    validDirectives.push_back("{");
 
     bool isValidDirective = false;
     for (size_t i = 0; i < tokens.size(); ++i)
@@ -395,6 +417,21 @@ void Config::checkLine(std::vector <std::string> validDirectives, std::vector<st
             continue;
     }
 }
+
+void Config::handleReturn(std::vector<std::string> &tokens, LocationConfig &current_location)
+{
+    if (tokens[0] == "return")
+    {
+        if (tokens.size() < 3)
+            throw InvalidConfig("Error: Incomplete return directive.");
+        char *end;
+        long statusCode = std::strtol(tokens[1].c_str(), &end, 10);
+        if ((statusCode < 300 || statusCode > 310) || *end != '\0')
+            throw InvalidConfig("Error: Invalid return code.");
+        current_location.setReturnDirective(tokens[1] + " " + tokens[2]);
+    }
+}
+
 
 Config Config::readConfig(const std::string &filename)
 {
@@ -424,7 +461,11 @@ Config Config::readConfig(const std::string &filename)
             current_server = ServerConfig();
         }
         else if (line == "}")
+        {
+            if (in_server_block && !current_server.isValid())
+                throw InvalidConfig("Error: Missing required directives (root, host, or listen).");
             Config.inBlocks(in_location_block, in_server_block, in_error_page_block, current_server, current_location);
+        }
         else if (line.find("location") == 0 && line[line.length() - 1] == '{')
             configLocation(in_location_block, current_location, line);
         else if (line == "error_page {")
@@ -436,7 +477,7 @@ Config Config::readConfig(const std::string &filename)
         else if (in_error_page_block)
             errorPage(tokens, current_server);
         else
-            continue;    
+            throw InvalidConfig("Error: Invalid line.");
     }
     return (Config);
 }

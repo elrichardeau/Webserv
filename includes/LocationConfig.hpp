@@ -23,6 +23,7 @@ public:
     void addCgiExtension(const std::string &ext);
     void addCgiPath(const std::string &ext, const std::string &path);
     void setUploadDir(const std::string &dir);
+    void setReturnDirective(const std::string &directive);
 
     std::string getPath() const;
     std::vector<std::string> getAllowMethods() const;
@@ -32,6 +33,7 @@ public:
     std::vector<std::string> getCgiExtensions() const;
     std::map<std::string, std::string> getCgiPaths() const;
     std::string getUploadDir() const;
+    std::string getReturnDirective() const;
 
 private:
 
@@ -43,4 +45,5 @@ private:
     std::vector<std::string> cgi_extension;
     std::map<std::string, std::string> cgi_path;
     std::string upload_dir;
+    std::string returnDirective;
 };

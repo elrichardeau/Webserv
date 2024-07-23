@@ -66,6 +66,12 @@ void LocationConfig::setUploadDir(const std::string &dir)
 	this->upload_dir = dir;
 }
 
+void LocationConfig::setReturnDirective(const std::string &directive)
+{
+	this->returnDirective = directive;
+}
+
+
 std::string LocationConfig::getPath() const
 { 
 	return (this->path); 
@@ -104,4 +110,9 @@ std::map<std::string, std::string> LocationConfig::getCgiPaths() const
 std::string LocationConfig::getUploadDir() const
 { 
 	return (this->upload_dir);
+}
+
+std::string LocationConfig::getReturnDirective() const
+{
+	return (this->returnDirective);
 }

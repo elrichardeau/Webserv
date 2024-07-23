@@ -12,6 +12,11 @@
 class ServerConfig
 {
 public:
+
+    bool hasRoot;
+    bool hasHost;
+    bool hasListen;
+    
     ServerConfig();
     ServerConfig(ServerConfig const &other);
     ServerConfig &operator=(ServerConfig const &other);
@@ -33,6 +38,7 @@ public:
     std::vector<LocationConfig> getLocations() const;
     std::vector<ErrorPageConfig> getErrorPages() const;
     std::vector<int> getPorts() const;
+    bool isValid() const;
 
 private:
     std::string host;
