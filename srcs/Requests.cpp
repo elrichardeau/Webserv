@@ -5,6 +5,7 @@
 #include <fstream>
 #include <sstream>
 #include <sys/stat.h>
+#include <dirent.h>
 #include "../includes/Requests.hpp"
 
 std::string itostr(int nb) {
@@ -76,8 +77,28 @@ std::vector<std::string> getAccept(std::string line) {
 	return accept;
 }
 
+bool checkRequestSyntax(std::vector<std::string> request) {
+	size_t find;
+	for (unsigned int i = 0; i < request.size(); i++) {
+		find = request[i].find("\r");
+		if (find == std::string::npos)
+			return false;
+	}
+	std::vector<std::string> firstLine = split(request[0], " ");
+	if (firstLine.size() != 3)
+		return false;
+	for (unsigned int i = 1; i < request.size() - 1; i++) {
+		std::vector<std::string> otherLine = split(request[i], ":");
+		if (otherLine.size() < 2)
+			return false;
+	}
+	return true;
+}
+
 Requests readRequest(std::string buf) {
 	std::vector<std::string> request = split(buf, "\n");
+	if (!checkRequestSyntax(request))
+		return Requests(BAD_REQUEST);
 	std::vector<std::string> methodPathProtocol, acceptedList, tmp;
 	for (unsigned int i = 0; i < request.size(); i++) {
 		if (request[i].find("\r", 0) != std::string::npos)
@@ -104,27 +125,6 @@ Requests readRequest(std::string buf) {
 		return Requests(NOT_ACCEPTABLE);
 	return Requests(methodPathProtocol[0], methodPathProtocol[1], methodPathProtocol[2], acceptedList);
 }
-
-// std::string getErrorPage(int error) {
-// 	switch (error) {
-// 		case BAD_REQUEST:
-// 			return "error/400.html";
-// 		case FORBIDDEN:
-// 			return "error/403.html";
-// 		case NOT_FOUND:
-// 			return "error/404.html";
-// 		case METHOD_NOT_ALLOWED:
-// 			return "error/405.html";
-// 		case NOT_ACCEPTABLE:
-// 			return "error/406.html";
-// 		case INTERNAL_SERVER_ERROR:
-// 			return "error/500.html";
-// 		case HTTP_VERSION_NOT_SUPPORTED:
-// 			return "error/505.html";
-// 		default:
-// 			return "error/500.html";
-// 	}
-// }
 
 Requests::Requests(int statusCode) : _statusCode(statusCode), _method(""), _path(""), _accept(0) {}
 Requests::Requests(const std::string &method, const std::string &path, const std::string &protocol, std::vector<std::string> &accept) :  _statusCode(200), _method(method), _path("." + path), _protocol(protocol), _accept(accept) {}
@@ -153,8 +153,14 @@ bool Requests::checkExtension() {
 }
 
 void Requests::checkPage() {
-	if (this->_path == "./")
-		this->_path = "./index.html";
+	DIR *dir = opendir(this->_path.c_str());
+	if (dir != NULL) {
+		closedir(dir);
+		std::string slash = "";
+		if (this->_path[this->_path.size() - 1] != '/')
+			slash = "/";
+		this->_path = this->_path + slash + "index.html";
+	}
 	if (access(this->_path.c_str(), F_OK))
 		this->_statusCode = NOT_FOUND;
 	else if (access(this->_path.c_str(), R_OK))
@@ -175,29 +181,40 @@ std::string getPage(std::string filename, std::string responseStatus) {
 
 std::string Requests::getResponse() {
 	chdir("./pages");
-	checkPage();
-	switch (this->_statusCode) {
-		case OK:
-			return getPage(this->_path, setResponse());
-		case BAD_REQUEST:
-			return getPage("error/400.html", setResponse());
-		case FORBIDDEN:
-			return getPage("error/403.html", setResponse());
-		case NOT_FOUND:
-			return getPage("error/404.html", setResponse());
-		case METHOD_NOT_ALLOWED:
-			return getPage("error/405.html", setResponse());
-		case NOT_ACCEPTABLE:
-			return getPage("error/406.html", setResponse());
-		case INTERNAL_SERVER_ERROR:
-			return getPage("error/500.html", setResponse());
-		case HTTP_VERSION_NOT_SUPPORTED:
-			return getPage("error/505.html", setResponse());
-		default:
-			return getPage("error/500.html", setResponse());
-	}
+	if (this->_statusCode == OK)
+		checkPage();
 	if (this->_statusCode == OK)
 		return getPage(this->_path, setResponse());
+	return getErrorPage();
+}
+
+std::string Requests::getErrorPage() {
+	this->_protocol = "HTTP/1.1";
+	this->_contentType = "text/html";
+	switch (this->_statusCode) {
+		case BAD_REQUEST:
+			this->_path = "./error/400.html";
+			break;
+		case FORBIDDEN:
+			this->_path = "./error/403.html";
+			break;
+		case NOT_FOUND:
+			this->_path = "./error/404.html";
+			break;
+		case METHOD_NOT_ALLOWED:
+			this->_path = "./error/405.html";
+			break;
+		case NOT_ACCEPTABLE:
+			this->_path = "./error/406.html";
+			break;
+		case HTTP_VERSION_NOT_SUPPORTED:
+			this->_path = "./error/505.html";
+			break;
+		case INTERNAL_SERVER_ERROR:
+			this->_path = "./error/500.html";
+			break;
+	}
+	return getPage(this->_path, setResponse());
 }
 
 std::string getErrorName(int error) {
@@ -226,9 +243,24 @@ std::string getErrorName(int error) {
 std::string Requests::setResponse() {
 	std::string response;
 	struct stat buf;
+	int st = stat(this->_path.c_str(), &buf);
 	response.append(this->_protocol + " " + itostr(this->_statusCode) + " " + getErrorName(this->_statusCode) + "\n");
+	response.append("Connection: Keep-Alive\n");
+	if (st != 1) {
+		size_t bytes = buf.st_size;
+		response.append("Content-Length: ");
+		response.append(itostr(bytes));
+		response.append("\n");
+	}
+	response.append("Content-Location: " + this->_path.substr(1, this->_path.size()) + "\n");
 	response.append("Content-Type: " + this->_contentType + "\n");
-	stat(this->_path.c_str(), &buf);
+	if (st != 1) {
+		response.append("Date: ");
+		response.append(ctime(&buf.st_atime));
+		response.append("Last-Modified: ");
+		response.append(ctime(&buf.st_mtime));
+	}
+	response.append("Server: Webserv\n");
 	response.append("\n");
 	return response;
 }

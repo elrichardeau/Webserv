@@ -29,12 +29,13 @@ class Requests {
 		int _statusCode;
 		const std::string _method;
 		std::string _path;
-		const std::string _protocol;
+		std::string _protocol;
 		const std::vector<std::string> _accept;
 		std::string _contentType;
 		void checkPage();
 		bool checkExtension();
 		std::string setResponse();
+		std::string getErrorPage();
 };
 
 Requests readRequest(std::string buf);
