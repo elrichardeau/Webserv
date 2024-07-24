@@ -15,22 +15,32 @@ ErrorPageConfig &ErrorPageConfig::operator=(ErrorPageConfig const &other)
 
 ErrorPageConfig::~ErrorPageConfig(){}
 
-void ErrorPageConfig::setCode(int c)
-{ 
-	code = c;
+// void ErrorPageConfig::setCode(int c)
+// { 
+// 	this->code = c;
+// }
+
+// void ErrorPageConfig::setPath(const std::string &p)
+// { 
+// 	this->path = p;
+// }
+
+// int ErrorPageConfig::getCode() const
+// { 
+// 	return (this->code);
+// }
+
+// std::string ErrorPageConfig::getPath() const
+// { 
+// 	return (this->path);
+// }
+
+void ErrorPageConfig::setErrorPage(int code, const std::string &path)
+{
+	errorPages[code] = path;
 }
 
-void ErrorPageConfig::setPath(const std::string &p)
-{ 
-	path = p;
-}
-
-int ErrorPageConfig::getCode() const
-{ 
-	return code;
-}
-
-std::string ErrorPageConfig::getPath() const
-{ 
-	return path;
+std::map<int, std::string> ErrorPageConfig::getErrorPages() const
+{
+	return (this->errorPages);
 }

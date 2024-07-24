@@ -15,15 +15,26 @@
 
 int main(int argc, char **argv)
 {
-    if (argc != 2)
+    std::string filename;
+    
+    if (argc <= 2)
     {
-        std::cerr << "2 args required." << std::endl;
-        exit(1);
+        if (argc == 2)
+            filename = argv[1];
+        else if (argc == 1)
+            filename = "server.conf";
     }
-    std::string filename = argv[1];
     try
     {
-        Config::readConfig(filename);
+        Config config = Config::readConfig(filename);
+        std::cout << "Servers loaded: " << config.getServers().size() << std::endl;
+    }
+    catch (const std::exception &e)
+    {
+        std::cerr << e.what() << std::endl;
+        return EXIT_FAILURE; 
+    }
+        
         int server_fd, client_socket, epoll_fd; // Déclaration des descripteurs de fichiers
         struct sockaddr_in address; // Structure pour stocker les adresses IP et les numéros de port pour IPv4
         int opt = 1; // Option pour permettre le redémarrage rapide du serveur
@@ -127,11 +138,6 @@ int main(int argc, char **argv)
 
         // Fermeture de la socket du serveur
         close(server_fd);
-        }
-        catch (const std::exception &e)
-        {
-            std::cerr << e.what() << std::endl;
-            return EXIT_FAILURE; 
-        }
+    
     return (0);
 }
