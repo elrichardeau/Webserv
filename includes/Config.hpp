@@ -17,8 +17,6 @@ class Config
 {
 	public:
 		Config();
-		Config(Config const &other);
-		Config &operator=(Config const &other);
 		~Config();
 
 

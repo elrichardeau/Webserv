@@ -6,7 +6,8 @@ SOURCES = main.cpp \
 		  ErrorPageConfig.cpp \
 		  LocationConfig.cpp \
 		  ServerConfig.cpp \
-		  Requests.cpp
+		  Requests.cpp \
+		  Server.cpp
 
 SRC = srcs/
 DIR = objs_deps/

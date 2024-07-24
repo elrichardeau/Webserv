@@ -312,36 +312,48 @@ std::string  Requests::execCgi(const std::string& scriptType)
 }
 
 
-std::string Requests::getResponse() {
-	chdir("./pages");
-	if (isSyntaxError())
-		return getPage("error/400.html", "HTTP/1.1 400 Bad Request\n\n");
-	if (access((this->_path).c_str(), F_OK))
-		return getPage("error/404.html", "HTTP/1.1 404 Not Found\n\n");
-	if (access((this->_path).c_str(), R_OK))
-		return getPage("error/403.html", "HTTP/1.1 403 Forbidden\n\n");
-	if (this->_path == "./")
-		return getPage("default.html", "HTTP/1.1 200 OK\n\n");
+// std::string Requests::getResponse() {
+// 	chdir("./pages");
+// 	if (isSyntaxError())
+// 		return getPage("error/400.html", "HTTP/1.1 400 Bad Request\n\n");
+// 	if (access((this->_path).c_str(), F_OK))
+// 		return getPage("error/404.html", "HTTP/1.1 404 Not Found\n\n");
+// 	if (access((this->_path).c_str(), R_OK))
+// 		return getPage("error/403.html", "HTTP/1.1 403 Forbidden\n\n");
+// 	if (this->_path == "./")
+// 		return getPage("default.html", "HTTP/1.1 200 OK\n\n");
 	
-	//partie cgi elodie
-	std::vector<std::string> words = Requests::split(this->_path, ".");
-	int nb_words = words.size();
-	if (nb_words == 1)
-		return getPage("error/400.html", "HTTP/1.1 400 Bad Request");
-	if (words[nb_words - 1] == "py" || words[nb_words - 1] == "php")
-	{
-		if (access((this->_path).c_str(), X_OK))
-			return getPage("error/403.html", "HTTP/1.1 403 Forbidden");
-		return (execCgi(words[nb_words - 1]));
-	}
-	return getPage(this->_path, "HTTP/1.1 200 OK");
+// 	//partie cgi elodie
+// 	std::vector<std::string> words = Requests::split(this->_path, ".");
+// 	int nb_words = words.size();
+// 	if (nb_words == 1)
+// 		return getPage("error/400.html", "HTTP/1.1 400 Bad Request");
+// 	if (words[nb_words - 1] == "py" || words[nb_words - 1] == "php")
+// 	{
+// 		if (access((this->_path).c_str(), X_OK))
+// 			return getPage("error/403.html", "HTTP/1.1 403 Forbidden");
+// 		return (execCgi(words[nb_words - 1]));
+// 	}
+// 	return getPage(this->_path, "HTTP/1.1 200 OK");
+// }
 
 std::string Requests::getResponse() {
 	chdir("./pages");
 	if (this->_statusCode == OK)
 		checkPage();
-	if (this->_statusCode == OK)
+	if (this->_statusCode == OK) {
+		std::vector<std::string> words = split(this->_path, ".");
+		int nb_words = words.size();
+		if (nb_words == 1)
+			return getPage("error/400.html", "HTTP/1.1 400 Bad Request");
+		if (words[nb_words - 1] == "py" || words[nb_words - 1] == "php")
+		{
+			if (access((this->_path).c_str(), X_OK))
+				return getPage("error/403.html", "HTTP/1.1 403 Forbidden");
+			return (execCgi(words[nb_words - 1]));
+		}
 		return getPage(this->_path, setResponse());
+	}
 	return getErrorPage();
 }
 

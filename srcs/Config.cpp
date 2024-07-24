@@ -1,18 +1,6 @@
 #include "../includes/Config.hpp"
 
 Config::Config(){}
-
-Config::Config(Config const &other) 
-{
-    (void)other;
-}
-
-Config &Config::operator=(Config const &other)
-{
-    (void)other;
-    return (*this);
-}
-
 Config::~Config(){}
 
 bool Config::isUniqueServer(const ServerConfig& server)
@@ -439,7 +427,7 @@ Config Config::readConfig(const std::string &filename)
     if (!file.is_open())
         throw InvalidConfig("Error: couldn't open file.");
     std::string line;
-    Config Config;
+    Config config;
     ServerConfig current_server;
     LocationConfig current_location;
     bool in_server_block = false;
@@ -464,7 +452,7 @@ Config Config::readConfig(const std::string &filename)
         {
             if (in_server_block && !current_server.isValid())
                 throw InvalidConfig("Error: Missing required directives (root, host, or listen).");
-            Config.inBlocks(in_location_block, in_server_block, in_error_page_block, current_server, current_location);
+            config.inBlocks(in_location_block, in_server_block, in_error_page_block, current_server, current_location);
         }
         else if (line.find("location") == 0 && line[line.length() - 1] == '{')
             configLocation(in_location_block, current_location, line);
@@ -479,7 +467,7 @@ Config Config::readConfig(const std::string &filename)
         else
             throw InvalidConfig("Error: Invalid line.");
     }
-    return (Config);
+    return (config);
 }
 
 

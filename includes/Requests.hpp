@@ -29,7 +29,6 @@ class Requests {
 		bool isSyntaxError();
 		
 		//cgi elodie
-		std::vector<std::string> split(std::string str, const std::string&  delimiter);
 		std::string 			 execCgi(const std::string& scriptType);
 		char**					 createEnv();
 		char **					 vectorToCharArray(const std::vector<std::string> &vector);

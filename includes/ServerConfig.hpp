@@ -22,7 +22,7 @@ public:
     ServerConfig &operator=(ServerConfig const &other);
     ~ServerConfig();
 
-   
+    void setSocket(int socket);
     void setHost(const std::string &h);
     void addPort(int portNumber);
     void setServerName(const std::string &name);
@@ -48,6 +48,4 @@ private:
     std::vector<int> ports;
     std::vector<LocationConfig> locations;
     std::vector<ErrorPageConfig> error_pages;
-    std::vector<int> serverSocket;
-
 };
