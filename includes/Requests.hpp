@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 
+
 enum StatusCode {
     OK = 200,
 	MOVED_PERMANENTLY = 301,
@@ -15,6 +16,7 @@ enum StatusCode {
     HTTP_VERSION_NOT_SUPPORTED = 505
 };
 
+
 class Requests {
 
 	public :
@@ -24,10 +26,22 @@ class Requests {
 		~Requests();
 		std::string getResponse();
 
+		bool isSyntaxError();
+		
+		//cgi elodie
+		std::vector<std::string> split(std::string str, const std::string&  delimiter);
+		std::string 			 execCgi(const std::string& scriptType);
+		char**					 createEnv();
+		char **					 vectorToCharArray(const std::vector<std::string> &vector);
+	std::vector<std::string> 	 createCgiEnv();
+		
+
+
 	private :
 
 		int _statusCode;
 		const std::string _method;
+
 		std::string _path;
 		std::string _protocol;
 		const std::vector<std::string> _accept;
@@ -36,6 +50,7 @@ class Requests {
 		bool checkExtension();
 		std::string setResponse();
 		std::string getErrorPage();
+
 };
 
 Requests readRequest(std::string buf);

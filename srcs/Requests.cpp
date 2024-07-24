@@ -179,6 +179,163 @@ std::string getPage(std::string filename, std::string responseStatus) {
 	return response;
 }
 
+std::string readFromPipe(int pipeFd)
+{
+	char buffer[4096];
+	std::string result;
+	ssize_t bytesRead = read(pipeFd, buffer, 4096 - 1);
+	if (bytesRead == -1)
+			return ("HTTP/1.1 500 Internal Server Error");
+
+	while (bytesRead  > 0)
+	{
+		buffer[bytesRead] = '\0';
+		result += buffer;
+		bytesRead = read(pipeFd, buffer, 4096 - 1);
+		if (bytesRead == -1)
+			return ("HTTP/1.1 500 Internal Server Error");
+	}
+	return (result);
+}
+
+
+char **Requests::vectorToCharArray(const std::vector<std::string> &vector)
+{
+	char** arr = new char*[vector.size() + 1];
+	
+	for (size_t i = 0; i < vector.size(); i++)
+	{
+		arr[i] = new char[vector[i].size() + 1];
+		std::copy(vector[i].begin(), vector[i].end(), arr[i]);
+		arr[i][vector[i].size()] = '\0';
+	}
+	arr[vector.size()] = NULL;
+	return (arr);
+}
+
+static void exportVar(std::vector<std::string> &env, const std::string&key, const std::string& value)
+{
+	env.push_back(key + '=' + value);
+}
+
+
+std::vector<std::string> Requests::createCgiEnv()
+{
+	std::vector<std::string> env;
+
+	exportVar(env, "REQUEST_METHOD", "POST");
+	exportVar(env, "SCRIPT_NAME", "script.php");
+	exportVar(env, "SERVER_PROTOCOL", "HTTP/1.1");
+	exportVar(env, "SERVER_SOFTWARE", "webserv/1.1");
+	exportVar(env, "DOCUMENT_ROOT", "/var/www/html");
+	exportVar(env, "PATH_INFO", ""); //infos supp sur la localisation de la ressource
+
+	if (!this->_method.compare("GET"))
+		exportVar(env, "QUERY_STRING", "");
+
+	else if (!this->_method.compare("POST"))
+	{
+		exportVar(env, "CONTENT_LENGTH", "");
+		exportVar(env, "CONTENT_TYPE", ""); //type decontenu du body 
+	}
+	return (env);
+}
+
+std::string  Requests::execCgi(const std::string& scriptType)
+{
+	int childPid;
+	int fd[2];
+	int fdBody[2];
+	const char *scriptInterpreter;
+	(void)scriptType;
+
+
+	if (pipe(fd) == -1)
+		return (getPage("error/500.html", "HTTP/1.1 500 Internal Server Error"));
+	childPid = fork();
+	if (childPid == -1)
+		return (getPage("error/500.html", "HTTP/1.1 500 Internal Server Error"));
+	
+	//si POST, on crée un | pour permettre l'écriture et la lecture du body
+	if (!this->_method.compare("POST"))
+	{
+		std::string _body = "name=John+Doe&email=john.doe%40example.com&age=30";
+
+		if (pipe(fdBody) == -1)
+			return (getPage("error/500.html", "HTTP/1.1 500 Internal Server Error"));
+		if (write(fdBody[1], _body.c_str(), _body.size()))
+			return (getPage("error/500.html", "HTTP/1.1 500 Internal Server Error"));
+	}
+	
+	if (!childPid)
+	{
+		if (chdir("./scripts") == -1)
+				return (getPage("error/500.html", "HTTP/1.1 500 Internal Server Error"));
+		if (!this->_method.compare("POST"))
+		{
+			close(fdBody[1]);
+			if (dup2(fd[0], STDIN_FILENO))
+				return (getPage("error/500.html", "HTTP/1.1 500 Internal Server Error"));
+			close(fd[0]);
+		}
+
+		close(fd[0]);
+		if (dup2(fd[1], STDOUT_FILENO))
+			return (getPage("error/500.html", "HTTP/1.1 500 Internal Server Error\n\n"));
+		close(fd[1]);
+		
+	 	std::string scpttype = "py";
+		if (scpttype.compare("py"))
+			scriptInterpreter = "/usr/bin/python";
+		else
+			scriptInterpreter = "/usr/bin/php";
+			
+		char **env = vectorToCharArray(createCgiEnv());
+		char *args[] = { const_cast<char*>(scriptInterpreter), const_cast<char*>(_path.c_str()), NULL };
+
+		execve(scriptInterpreter, args, env);
+		return (delete [] env, getPage("error/500.html", "HTTP/1.1 500 Internal Server Error\n\n"));
+	}
+	
+	if (!this->_method.compare("POST"))
+	{
+		close(fdBody[0]);
+		close(fdBody[1]);
+	}
+
+	close(fd[1]);
+    std::string scriptContent = readFromPipe(fd[0]);
+	if (!scriptContent.compare("HTTP/1.1 500 Internal Server Error"))
+		return (close(fd[0]), getPage("error/500.html", "HTTP/1.1 500 Internal Server Error\n\n"));
+	close(fd[0]);
+	return getPage(scriptContent, "HTTP/1.1 200 OK\n\n");
+}
+
+
+std::string Requests::getResponse() {
+	chdir("./pages");
+	if (isSyntaxError())
+		return getPage("error/400.html", "HTTP/1.1 400 Bad Request\n\n");
+	if (access((this->_path).c_str(), F_OK))
+		return getPage("error/404.html", "HTTP/1.1 404 Not Found\n\n");
+	if (access((this->_path).c_str(), R_OK))
+		return getPage("error/403.html", "HTTP/1.1 403 Forbidden\n\n");
+	if (this->_path == "./")
+		return getPage("default.html", "HTTP/1.1 200 OK\n\n");
+	
+	//partie cgi elodie
+	std::vector<std::string> words = Requests::split(this->_path, ".");
+	int nb_words = words.size();
+	if (nb_words == 1)
+		return getPage("error/400.html", "HTTP/1.1 400 Bad Request");
+	if (words[nb_words - 1] == "py" || words[nb_words - 1] == "php")
+	{
+		if (access((this->_path).c_str(), X_OK))
+			return getPage("error/403.html", "HTTP/1.1 403 Forbidden");
+		return (execCgi(words[nb_words - 1]));
+	}
+	return getPage(this->_path, "HTTP/1.1 200 OK");
+
 std::string Requests::getResponse() {
 	chdir("./pages");
 	if (this->_statusCode == OK)
@@ -263,4 +420,5 @@ std::string Requests::setResponse() {
 	response.append("Server: Webserv\n");
 	response.append("\n");
 	return response;
+
 }
