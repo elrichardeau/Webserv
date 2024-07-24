@@ -3,18 +3,27 @@
 Config::Config(){}
 Config::~Config(){}
 
-bool Config::isUniqueServer(const ServerConfig& server)
+bool arePortsEqual(const std::vector<int> &ports1, const std::vector<int> &ports2)
 {
-    const std::vector<int> &ports = server.getPorts();
-    const std::string  &name = server.getServerName();
-
-    for (std::vector<int>::const_iterator it = ports.begin(); it != ports.end(); ++it)
+    if (ports1.size() != ports2.size()) 
+        return (false);
+    for (size_t i = 0; i < ports1.size(); ++i)
     {
-        if (std::find(usedPorts.begin(), usedPorts.end(), *it) != usedPorts.end())
+        if (ports1[i] != ports2[i])
             return (false);
     }
-    if (std::find(usedServerNames.begin(), usedServerNames.end(), name) != usedServerNames.end())
-        return (false);
+    return (true);
+}
+
+bool Config::isUniqueServer(const ServerConfig &newServer)
+{
+    for (std::vector<ServerConfig>::const_iterator it = servers.begin(); it != servers.end(); ++it)
+    {
+        if (it->getServerName() == newServer.getServerName() && \
+            it->getHost() == newServer.getHost() && \
+            arePortsEqual(it->getPorts(), newServer.getPorts()))
+            return (false);
+    }
     return (true);
 }
 
@@ -23,8 +32,6 @@ void Config::addServer(const ServerConfig &server)
 	if (!isUniqueServer(server))
         throw InvalidConfig("Duplicate server configuration detected.");
     servers.push_back(server);
-    usedPorts.insert(usedPorts.end(), server.getPorts().begin(), server.getPorts().end());
-    usedServerNames.push_back(server.getServerName());
     std::cout << "Server added. Total servers: " << servers.size() << std::endl;
 }
 

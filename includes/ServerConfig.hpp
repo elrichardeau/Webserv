@@ -22,7 +22,6 @@ public:
     ServerConfig &operator=(ServerConfig const &other);
     ~ServerConfig();
 
-    void setSocket(int socket);
     void setHost(const std::string &h);
     void addPort(int portNumber);
     void setServerName(const std::string &name);

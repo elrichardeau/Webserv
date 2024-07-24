@@ -20,7 +20,7 @@ class Config
 		~Config();
 
 
-		bool isUniqueServer(const ServerConfig& server);
+		bool isUniqueServer(const ServerConfig &newServer);
 		void addServer(const ServerConfig &server);
 		std::vector<ServerConfig> getServers() const;
 		static std::vector<std::string> split(const std::string &str, char delimiter);
@@ -50,9 +50,7 @@ class Config
 	
 	private:
 		std::vector<ServerConfig> servers;
-		std::vector<int> usedPorts;
-		std::vector<std::string> usedServerNames;
-	
+
 	class InvalidConfig : public std::exception
 	{
 		public:
