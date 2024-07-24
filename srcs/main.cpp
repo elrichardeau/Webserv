@@ -15,17 +15,18 @@
 
 int main(int argc, char **argv)
 {
-    if (argc != 2)
+    std::string filename;
+    
+    if (argc <= 2)
     {
-        std::cerr << "2 args required." << std::endl;
-        exit(1);
+        if (argc == 2)
+            filename = argv[1];
+        else if (argc == 1)
+            filename = "server.conf";
     }
-    //std::string filename = argv[1];
-    Config config;
-    // std::cout << "Config object address: " << &config << std::endl;
     try
     {
-        config = Config::readConfig(argv[1]);
+        Config config = Config::readConfig(filename);
         std::cout << "Servers loaded: " << config.getServers().size() << std::endl;
     }
     catch (const std::exception &e)
@@ -33,11 +34,11 @@ int main(int argc, char **argv)
         std::cerr << e.what() << std::endl;
         return EXIT_FAILURE; 
     }
+        
         int server_fd, client_socket, epoll_fd; // Déclaration des descripteurs de fichiers
         struct sockaddr_in address; // Structure pour stocker les adresses IP et les numéros de port pour IPv4
         int opt = 1; // Option pour permettre le redémarrage rapide du serveur
         int addrlen = sizeof(address); // Taille de la structure adresse
-        char buffer[1024] = {0}; // Buffer pour stocker les données reçues
 
         // Création de la socket
         server_fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -120,6 +121,7 @@ int main(int argc, char **argv)
                 else
                 {
                     // Lire la requête du client
+                    char buffer[1024] = {0};
                     if(recv(events[i].data.fd, buffer, 1024, 0) <= 0)
                         close(events[i].data.fd);
                     else {
@@ -136,5 +138,6 @@ int main(int argc, char **argv)
 
         // Fermeture de la socket du serveur
         close(server_fd);
+    
     return (0);
 }

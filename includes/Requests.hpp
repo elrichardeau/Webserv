@@ -1,31 +1,31 @@
-/* ************************************************************************** */
-/*                                                                            */
-/*                                                        :::      ::::::::   */
-/*   Requests.hpp                                       :+:      :+:    :+:   */
-/*                                                    +:+ +:+         +:+     */
-/*   By: elrichar <elrichar@student.42.fr>          +#+  +:+       +#+        */
-/*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2024/07/15 11:57:21 by niromano          #+#    #+#             */
-/*   Updated: 2024/07/22 14:11:51 by elrichar         ###   ########.fr       */
-/*                                                                            */
-/* ************************************************************************** */
-
 #pragma once
 
 #include <string>
 #include <vector>
 
 
+enum StatusCode {
+    OK = 200,
+	MOVED_PERMANENTLY = 301,
+    BAD_REQUEST = 400,
+	FORBIDDEN = 403,
+    NOT_FOUND = 404,
+    METHOD_NOT_ALLOWED = 405,
+	NOT_ACCEPTABLE = 406,
+    INTERNAL_SERVER_ERROR = 500,
+    HTTP_VERSION_NOT_SUPPORTED = 505
+};
+
+
 class Requests {
 
 	public :
 
-		Requests(const std::string &type, const std::string &path, const std::string &method);
+		Requests(int statusCode);
+		Requests(const std::string &method, const std::string &path, const std::string &protocol, std::vector<std::string> &accept);
 		~Requests();
-		std::string getType();
-		std::string getPath();
-		std::string getMethod();
 		std::string getResponse();
+
 		bool isSyntaxError();
 		
 		//cgi elodie
@@ -36,11 +36,20 @@ class Requests {
 	std::vector<std::string> 	 createCgiEnv();
 		
 
+
 	private :
 
-		const std::string _type;
-		const std::string _path;
+		int _statusCode;
 		const std::string _method;
+
+		std::string _path;
+		std::string _protocol;
+		const std::vector<std::string> _accept;
+		std::string _contentType;
+		void checkPage();
+		bool checkExtension();
+		std::string setResponse();
+		std::string getErrorPage();
 
 };
 

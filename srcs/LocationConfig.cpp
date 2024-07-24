@@ -2,14 +2,25 @@
 
 LocationConfig::LocationConfig(){}
 
-LocationConfig::LocationConfig(LocationConfig const &other)
-{
-	(void)other;
-}
+LocationConfig::LocationConfig(LocationConfig const &other) : path(other.path), allow_methods(other.allow_methods), index(other.index),
+  autoindex(other.autoindex), root(other.root), cgi_extension(other.cgi_extension),
+  cgi_path(other.cgi_path), upload_dir(other.upload_dir)
+{}
+
 LocationConfig &LocationConfig::operator=(LocationConfig const &other)
 {
-	(void)other;
-	return (*this);
+	if (this != &other)
+    {
+        path = other.path;
+        allow_methods = other.allow_methods;
+        index = other.index;
+        autoindex = other.autoindex;
+        root = other.root;
+        cgi_extension = other.cgi_extension;
+        cgi_path = other.cgi_path;
+        upload_dir = other.upload_dir;
+    }
+    return *this;
 }
 
 LocationConfig::~LocationConfig()
@@ -30,6 +41,11 @@ void LocationConfig::setIndex(const std::string &idx)
 	this->index = idx; 
 }
 
+void LocationConfig::setAutoIndex(const std::string &autoidx) 
+{ 
+	this->autoindex = autoidx; 
+}
+
 void LocationConfig::setRoot(const std::string &rt)
 { 
 	this->root = rt; 
@@ -46,9 +62,15 @@ void LocationConfig::addCgiPath(const std::string &ext, const std::string &path)
 }
 
 void LocationConfig::setUploadDir(const std::string &dir)
-{ 
+{
 	this->upload_dir = dir;
 }
+
+void LocationConfig::setReturnDirective(const std::string &directive)
+{
+	this->returnDirective = directive;
+}
+
 
 std::string LocationConfig::getPath() const
 { 
@@ -63,6 +85,11 @@ std::vector<std::string> LocationConfig::getAllowMethods() const
 std::string LocationConfig::getIndex() const
 { 
 	return (this->index); 
+}
+
+std::string LocationConfig::getautoIndex() const
+{
+	return (this->autoindex);
 }
 
 std::string LocationConfig::getRoot() const
@@ -83,4 +110,9 @@ std::map<std::string, std::string> LocationConfig::getCgiPaths() const
 std::string LocationConfig::getUploadDir() const
 { 
 	return (this->upload_dir);
+}
+
+std::string LocationConfig::getReturnDirective() const
+{
+	return (this->returnDirective);
 }

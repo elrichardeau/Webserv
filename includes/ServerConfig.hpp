@@ -12,12 +12,17 @@
 class ServerConfig
 {
 public:
+
+    bool hasRoot;
+    bool hasHost;
+    bool hasListen;
+    
     ServerConfig();
     ServerConfig(ServerConfig const &other);
     ServerConfig &operator=(ServerConfig const &other);
     ~ServerConfig();
 
-    //void setListen(int l);
+   
     void setHost(const std::string &h);
     void addPort(int portNumber);
     void setServerName(const std::string &name);
@@ -26,7 +31,6 @@ public:
     void addLocation(const LocationConfig &loc);
     void addErrorPage(const ErrorPageConfig &error);
 
-    int getListen() const;
     std::string getHost() const;
     std::string getServerName() const;
     int getClientMaxBodySize() const;
@@ -34,10 +38,9 @@ public:
     std::vector<LocationConfig> getLocations() const;
     std::vector<ErrorPageConfig> getErrorPages() const;
     std::vector<int> getPorts() const;
+    bool isValid() const;
 
 private:
-
-    int listen;
     std::string host;
     std::string server_name;
     int client_max_body_size;
@@ -45,4 +48,6 @@ private:
     std::vector<int> ports;
     std::vector<LocationConfig> locations;
     std::vector<ErrorPageConfig> error_pages;
+    std::vector<int> serverSocket;
+
 };
