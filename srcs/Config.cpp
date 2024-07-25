@@ -1,6 +1,9 @@
 #include "../includes/Config.hpp"
 
-Config::Config(){}
+Config::Config(const std::string &filename)
+{
+    readConfig(filename);
+}
 Config::~Config(){}
 
 bool arePortsEqual(const std::vector<int> &ports1, const std::vector<int> &ports2)
@@ -427,14 +430,12 @@ void Config::handleReturn(std::vector<std::string> &tokens, LocationConfig &curr
     }
 }
 
-
-Config Config::readConfig(const std::string &filename)
+void Config::readConfig(const std::string &filename)
 {
     std::ifstream file(filename.c_str());
     if (!file.is_open())
         throw InvalidConfig("Error: couldn't open file.");
     std::string line;
-    Config config;
     ServerConfig current_server;
     LocationConfig current_location;
     bool in_server_block = false;
@@ -459,7 +460,7 @@ Config Config::readConfig(const std::string &filename)
         {
             if (in_server_block && !current_server.isValid())
                 throw InvalidConfig("Error: Missing required directives (root, host, or listen).");
-            config.inBlocks(in_location_block, in_server_block, in_error_page_block, current_server, current_location);
+            inBlocks(in_location_block, in_server_block, in_error_page_block, current_server, current_location);
         }
         else if (line.find("location") == 0 && line[line.length() - 1] == '{')
             configLocation(in_location_block, current_location, line);
@@ -474,7 +475,6 @@ Config Config::readConfig(const std::string &filename)
         else
             throw InvalidConfig("Error: Invalid line.");
     }
-    return (config);
 }
 
 
