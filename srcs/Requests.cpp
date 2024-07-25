@@ -243,12 +243,10 @@ std::vector<std::string> Requests::createCgiEnv()
 
 std::string  Requests::execCgi(const std::string& scriptType)
 {
-
 	int childPid;
 	int fd[2];
 	int fdBody[2];
 	const char *scriptInterpreter;
-
 
 	if (pipe(fd) == -1)
 		return (getPage("error/500.html", "HTTP/1.1 500 Internal Server Error"));
@@ -278,8 +276,13 @@ std::string  Requests::execCgi(const std::string& scriptType)
 		}
 
 		close(fd[0]);
+		//probleme : not a directory
 		if (dup2(fd[1], STDOUT_FILENO))
+		{
+			perror("PIPRE ERROR ");
 			return (getPage("error/500.html", "HTTP/1.1 500 Internal Server Error\n\n"));
+		}
+		std::cout << "PASSEEEEEEE" << std::endl;
 		close(fd[1]);
 		
 		if (scriptType.compare("py"))
