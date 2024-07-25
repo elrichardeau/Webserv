@@ -33,18 +33,12 @@ int main(int argc, char **argv)
         else if (argc == 1)
             filename = "server.conf";
     }
-    Config config;
+    
     try
     {
-        config = Config::readConfig(filename);
+        Config config(filename);
         std::cout << "Servers loaded: " << config.getServers().size() << std::endl;
-    }
-    catch (const std::exception &e)
-    {
-        std::cerr << e.what() << std::endl;
-        return EXIT_FAILURE; 
-    }
-    std::vector<ServerConfig> servers;
+        std::vector<ServerConfig> servers;
     servers = config.getServers();
     std::vector<Server> serverList;
     for (size_t i = 0; i < servers.size(); i++) {
@@ -153,5 +147,11 @@ int main(int argc, char **argv)
     // Fermeture de la socket du serveur
     for (size_t i = 0; i < serverList.size(); i++)
         close(serverList[i].getServerSocket());
+    }
+    catch (const std::exception &e)
+    {
+        std::cerr << e.what() << std::endl;
+        return EXIT_FAILURE; 
+    }
     return (0);
 }

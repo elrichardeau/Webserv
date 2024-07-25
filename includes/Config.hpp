@@ -16,15 +16,15 @@
 class Config 
 {
 	public:
-		Config();
+		Config(const std::string &filename);
 		~Config();
 
 
-		bool isUniqueServer(const ServerConfig& server);
+		bool isUniqueServer(const ServerConfig &newServer);
 		void addServer(const ServerConfig &server);
 		std::vector<ServerConfig> getServers() const;
 		static std::vector<std::string> split(const std::string &str, char delimiter);
-		static Config readConfig(const std::string &filename);
+		void readConfig(const std::string &filename);
 		static void location(std::vector<std::string> &tokens, LocationConfig &current_location);
 		static void server(std::vector<std::string> &tokens, ServerConfig &current_server);
 		static void errorPage(std::vector<std::string> &tokens, ServerConfig &current_server);
@@ -50,9 +50,7 @@ class Config
 	
 	private:
 		std::vector<ServerConfig> servers;
-		std::vector<int> usedPorts;
-		std::vector<std::string> usedServerNames;
-	
+
 	class InvalidConfig : public std::exception
 	{
 		public:

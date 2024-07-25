@@ -1,20 +1,32 @@
 #include "../includes/Config.hpp"
 
-Config::Config(){}
+Config::Config(const std::string &filename)
+{
+    readConfig(filename);
+}
 Config::~Config(){}
 
-bool Config::isUniqueServer(const ServerConfig& server)
+bool arePortsEqual(const std::vector<int> &ports1, const std::vector<int> &ports2)
 {
-    const std::vector<int> &ports = server.getPorts();
-    const std::string  &name = server.getServerName();
-
-    for (std::vector<int>::const_iterator it = ports.begin(); it != ports.end(); ++it)
+    if (ports1.size() != ports2.size()) 
+        return (false);
+    for (size_t i = 0; i < ports1.size(); ++i)
     {
-        if (std::find(usedPorts.begin(), usedPorts.end(), *it) != usedPorts.end())
+        if (ports1[i] != ports2[i])
             return (false);
     }
-    if (std::find(usedServerNames.begin(), usedServerNames.end(), name) != usedServerNames.end())
-        return (false);
+    return (true);
+}
+
+bool Config::isUniqueServer(const ServerConfig &newServer)
+{
+    for (std::vector<ServerConfig>::const_iterator it = servers.begin(); it != servers.end(); ++it)
+    {
+        if (it->getServerName() == newServer.getServerName() && \
+            it->getHost() == newServer.getHost() && \
+            arePortsEqual(it->getPorts(), newServer.getPorts()))
+            return (false);
+    }
     return (true);
 }
 
@@ -23,8 +35,6 @@ void Config::addServer(const ServerConfig &server)
 	if (!isUniqueServer(server))
         throw InvalidConfig("Duplicate server configuration detected.");
     servers.push_back(server);
-    usedPorts.insert(usedPorts.end(), server.getPorts().begin(), server.getPorts().end());
-    usedServerNames.push_back(server.getServerName());
     std::cout << "Server added. Total servers: " << servers.size() << std::endl;
 }
 
@@ -420,14 +430,12 @@ void Config::handleReturn(std::vector<std::string> &tokens, LocationConfig &curr
     }
 }
 
-
-Config Config::readConfig(const std::string &filename)
+void Config::readConfig(const std::string &filename)
 {
     std::ifstream file(filename.c_str());
     if (!file.is_open())
         throw InvalidConfig("Error: couldn't open file.");
     std::string line;
-    Config config;
     ServerConfig current_server;
     LocationConfig current_location;
     bool in_server_block = false;
@@ -452,7 +460,7 @@ Config Config::readConfig(const std::string &filename)
         {
             if (in_server_block && !current_server.isValid())
                 throw InvalidConfig("Error: Missing required directives (root, host, or listen).");
-            config.inBlocks(in_location_block, in_server_block, in_error_page_block, current_server, current_location);
+            inBlocks(in_location_block, in_server_block, in_error_page_block, current_server, current_location);
         }
         else if (line.find("location") == 0 && line[line.length() - 1] == '{')
             configLocation(in_location_block, current_location, line);
@@ -467,7 +475,6 @@ Config Config::readConfig(const std::string &filename)
         else
             throw InvalidConfig("Error: Invalid line.");
     }
-    return (config);
 }
 
 
