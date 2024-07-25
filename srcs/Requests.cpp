@@ -30,29 +30,17 @@ std::vector<std::string> split(std::string buf, std::string find) {
 }
 
 bool isMethodExisted(std::string line) {
-	std::vector<std::string> method;
-	method.push_back("GET");
-	method.push_back("HEAD");
-	method.push_back("POST");
-	method.push_back("PUT");
-	method.push_back("DELETE");
-	method.push_back("CONNECT");
-	method.push_back("OPTIONS");
-	method.push_back("TRACE");
-	method.push_back("PATCH");
-	for (unsigned int i = 0; i < method.size(); i++)
-		if (!line.compare(0, method[i].size(), method[i]))
+	std::string method[9] = {"GET", "HEAD", "POST", "PUT", "DELETE", "CONNECT", "OPTIONS", "TRACE", "PATCH"};
+	for (unsigned int i = 0; i < 9; i++)
+		if (!line.compare(0, strlen(method[i].c_str()), method[i].c_str()))
 			return true;
 	return false;
 }
 
 bool isMethodAccepted(std::string line) {
-	std::vector<std::string> method;
-	method.push_back("GET");
-	method.push_back("POST");
-	method.push_back("DELETE");
-	for (unsigned int i = 0; i < method.size(); i++)
-		if (!line.compare(0, method[i].size(), method[i]))
+	std::string method[3] = {"GET", "POST", "DELETE"};
+	for (unsigned int i = 0; i < 3; i++)
+		if (!line.compare(0, strlen(method[i].c_str()), method[i].c_str()))
 			return true;
 	return false;
 }
