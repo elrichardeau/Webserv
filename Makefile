@@ -7,7 +7,8 @@ SOURCES = main.cpp \
 		  LocationConfig.cpp \
 		  ServerConfig.cpp \
 		  Requests.cpp \
-		  Server.cpp
+		  Server.cpp \
+		  ServerManager.cpp
 
 SRC = srcs/
 DIR = objs_deps/
