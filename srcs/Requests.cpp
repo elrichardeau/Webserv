@@ -115,7 +115,16 @@ Requests readRequest(std::string buf) {
 }
 
 Requests::Requests(int statusCode) : _statusCode(statusCode), _method(""), _path(""), _accept(0) {}
-Requests::Requests(const std::string &method, const std::string &path, const std::string &protocol, std::vector<std::string> &accept) :  _statusCode(200), _method(method), _path("." + path), _protocol(protocol), _accept(accept) {}
+
+Requests::Requests(const std::string &method, const std::string &path, const std::string &protocol, std::vector<std::string> &accept) :  _statusCode(200), _method(method), _path("." + path), _protocol(protocol), _accept(accept) {
+	this->_query = "";
+	size_t find = this->_path.find("?");
+	if (find != std::string::npos) {
+		this->_query = this->_path.substr(find + 1, this->_path.size());
+		this->_path.erase(find, this->_path.size());
+	}
+}
+
 Requests::~Requests() {}
 
 bool Requests::checkExtension() {
@@ -126,6 +135,10 @@ bool Requests::checkExtension() {
 	size_t find = this->_path.find_last_of(".");
 	if (find != std::string::npos) {
 		std::string extension = this->_path.substr(find + 1, this->_path.size());
+		if (extension == "php" || extension == "py") {
+			this->_contentType = "text/html";
+			return true;
+		}
 		for (unsigned int i = 0; i < this->_accept.size(); i++) {
 			size_t find = this->_accept[i].find("/");
 			if (find != std::string::npos) {

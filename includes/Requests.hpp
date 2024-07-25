@@ -42,6 +42,7 @@ class Requests {
 		const std::string _method;
 
 		std::string _path;
+		std::string _query;
 		std::string _protocol;
 		const std::vector<std::string> _accept;
 		std::string _contentType;
