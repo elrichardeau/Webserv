@@ -229,10 +229,9 @@ std::vector<std::string> Requests::createCgiEnv()
 	exportVar(env, "SERVER_PROTOCOL", "HTTP/1.1");
 	exportVar(env, "SERVER_SOFTWARE", "webserv/1.1");
 	exportVar(env, "DOCUMENT_ROOT", "/var/www/html");
-	exportVar(env, "PATH_INFO", ""); //infos supp sur la localisation de la ressource
 
 	if (!this->_method.compare("GET"))
-		exportVar(env, "QUERY_STRING", "");
+		exportVar(env, "QUERY_STRING", this->_query);
 
 	else if (!this->_method.compare("POST"))
 	{
@@ -244,11 +243,11 @@ std::vector<std::string> Requests::createCgiEnv()
 
 std::string  Requests::execCgi(const std::string& scriptType)
 {
+
 	int childPid;
 	int fd[2];
 	int fdBody[2];
 	const char *scriptInterpreter;
-	(void)scriptType;
 
 
 	if (pipe(fd) == -1)
@@ -270,8 +269,6 @@ std::string  Requests::execCgi(const std::string& scriptType)
 	
 	if (!childPid)
 	{
-		if (chdir("./scripts") == -1)
-				return (getPage("error/500.html", "HTTP/1.1 500 Internal Server Error"));
 		if (!this->_method.compare("POST"))
 		{
 			close(fdBody[1]);
@@ -285,8 +282,7 @@ std::string  Requests::execCgi(const std::string& scriptType)
 			return (getPage("error/500.html", "HTTP/1.1 500 Internal Server Error\n\n"));
 		close(fd[1]);
 		
-	 	std::string scpttype = "py";
-		if (scpttype.compare("py"))
+		if (scriptType.compare("py"))
 			scriptInterpreter = "/usr/bin/python";
 		else
 			scriptInterpreter = "/usr/bin/php";
