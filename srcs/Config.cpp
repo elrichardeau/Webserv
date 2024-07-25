@@ -8,31 +8,70 @@ Config::~Config(){}
 
 bool arePortsEqual(const std::vector<int> &ports1, const std::vector<int> &ports2)
 {
-    if (ports1.size() != ports2.size()) 
-        return (false);
-    for (size_t i = 0; i < ports1.size(); ++i)
-    {
-        if (ports1[i] != ports2[i])
-            return (false);
-    }
-    return (true);
+    // if (ports1.size() != ports2.size())
+    // {
+    //     std::cout << "Taille de ports different." << std::endl;
+    //     return (false);
+    // }
+    // for (size_t i = 0; i < ports1.size(); ++i)
+    // {
+    //     if (ports1[i] != ports2[i])
+    //     {
+    //         std::cout << "Ports differents: " << ports1[i] << " et " << ports2[i] <<std::endl;
+    //         return (false);
+    //     }
+    // }
+    // return (true)
+    std::set<int> set1(ports1.begin(), ports1.end());
+    std::set<int> set2(ports2.begin(), ports2.end());
+    return set1 == set2;;
 }
+
+// bool hasUniquePorts(const std::vector<int> &ports)
+// {
+//     std::vector<int> sortedPorts = ports;
+//     sort(sortedPorts.begin(), sortedPorts.end());
+//     for (size_t i = 1; i < sortedPorts.size(); ++i)
+//     {
+//         std::cout << "Taille de listen: " << sortedPorts.size() << std::endl;
+//         if (sortedPorts[i-1] == sortedPorts[i])
+//         {
+//             std::cout << "Port identique: " << sortedPorts[i] << std::endl;
+//             return (false);
+//         }
+//     }
+//     return (true);
+// }
+// bool isServerDifferent(const ServerConfig &existingServer, const ServerConfig& newServer)
+// {
+//     if (existingServer.getServerName() == newServer.getServerName() &&
+//         existingServer.getHost() == newServer.getHost() &&
+//         arePortsEqual(existingServer.getPorts(), newServer.getPorts())) 
+//     {
+//         return false;
+//     }
+//     return true;
+// }
 
 bool Config::isUniqueServer(const ServerConfig &newServer)
 {
-    for (std::vector<ServerConfig>::const_iterator it = servers.begin(); it != servers.end(); ++it)
+    
+    for (size_t i = 0; i < servers.size(); ++i)
     {
-        if (it->getServerName() == newServer.getServerName() && \
-            it->getHost() == newServer.getHost() && \
-            arePortsEqual(it->getPorts(), newServer.getPorts()))
-            return (false);
+        if (servers[i].getServerName() == newServer.getServerName() &&
+            servers[i].getHost() == newServer.getHost() &&
+            arePortsEqual(server.getPorts(), newServer.getPorts()))
+        {
+            return false;
+        }
+       //std::find(servers[i].getPorts().begin(), servers[i].getPorts().end(), newServer.getPorts()[0]) != servers[i].getPorts().end()
     }
-    return (true);
+    return true;
 }
 
 void Config::addServer(const ServerConfig &server) 
 { 
-	if (!isUniqueServer(server))
+    if (!isUniqueServer(server))
         throw InvalidConfig("Duplicate server configuration detected.");
     servers.push_back(server);
     std::cout << "Server added. Total servers: " << servers.size() << std::endl;
@@ -249,17 +288,22 @@ void Config::listen(std::vector<std::string> &tokens, ServerConfig &current_serv
     {
         if (tokens.size() < 2)
             throw InvalidConfig("Error: No port number specified.");
-        char *buf;
+        std::vector<int> tempPort;
         for (size_t i = 1; i < tokens.size(); ++i)
         {
+            char *buf;
             std::string start = tokens[i];
             long port = std::strtol(start.c_str(), &buf, 10);
             std::string end = buf;
-            if (end == "\0" && port >= 0 && port <=  65535)
-                current_server.addPort(static_cast <int> (port));
-            else 
+            if (end != "\0" && port < 0 && port >  65535)
                 throw InvalidConfig("Error: Invalid port number.");
+            if (std::find(tempPort.begin(), tempPort.end(), port) != tempPort.end())
+                throw InvalidConfig("Error: Duplicate port number.");
+            tempPort.push_back(port);
+        
         }  
+        for (size_t i = 0; i < tempPort.size(); ++i)
+            current_server.addPort(static_cast <int> (tempPort[i]));
     }
 }
 

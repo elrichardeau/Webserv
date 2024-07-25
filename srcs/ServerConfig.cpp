@@ -3,6 +3,11 @@
 ServerConfig::ServerConfig() : hasRoot(false), hasHost(false), hasListen(false)
 {
 }
+// ServerConfig::ServerConfig(const std::string &host, const std::string &serverName, int port)
+// : host(host), server_name(serverName), client_max_body_size(0), root("")
+// {
+//     ports.push_back(port);
+// }
 
 ServerConfig::ServerConfig(ServerConfig const &other) 
 {

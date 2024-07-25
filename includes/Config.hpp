@@ -50,6 +50,7 @@ class Config
 	
 	private:
 		std::vector<ServerConfig> servers;
+		std::vector<int> usedPorts;
 
 	class InvalidConfig : public std::exception
 	{
