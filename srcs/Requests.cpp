@@ -4,7 +4,9 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+ #include <stdlib.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
 #include <dirent.h>
 #include "../includes/Requests.hpp"
 
@@ -224,11 +226,11 @@ std::vector<std::string> Requests::createCgiEnv()
 {
 	std::vector<std::string> env;
 
-	exportVar(env, "REQUEST_METHOD", "POST");
-	exportVar(env, "SCRIPT_NAME", "script.php");
+	exportVar(env, "REQUEST_METHOD", this->_method);
+	exportVar(env, "SCRIPT_NAME", "response.php");
 	exportVar(env, "SERVER_PROTOCOL", "HTTP/1.1");
 	exportVar(env, "SERVER_SOFTWARE", "webserv/1.1");
-	exportVar(env, "DOCUMENT_ROOT", "/var/www/html");
+	// exportVar(env, "DOCUMENT_ROOT", "/var/www/html");
 
 	if (!this->_method.compare("GET"))
 		exportVar(env, "QUERY_STRING", this->_query);
@@ -244,6 +246,7 @@ std::vector<std::string> Requests::createCgiEnv()
 std::string  Requests::execCgi(const std::string& scriptType)
 {
 	int childPid;
+	int childValue;
 	int fd[2];
 	int fdBody[2];
 	const char *scriptInterpreter;
@@ -271,21 +274,22 @@ std::string  Requests::execCgi(const std::string& scriptType)
 		{
 			close(fdBody[1]);
 			if (dup2(fd[0], STDIN_FILENO))
-				return (getPage("error/500.html", "HTTP/1.1 500 Internal Server Error"));
-			close(fd[0]);
+				exit(EXIT_FAILURE);
 		}
 
 		close(fd[0]);
-		//probleme : not a directory
-		if (dup2(fd[1], STDOUT_FILENO))
+		//ici ca passe
+		if (dup2(fd[1], STDOUT_FILENO) == -1)
 		{
+			//ca passe pas
 			perror("PIPRE ERROR ");
-			return (getPage("error/500.html", "HTTP/1.1 500 Internal Server Error\n\n"));
+			exit(EXIT_FAILURE);
 		}
-		std::cout << "PASSEEEEEEE" << std::endl;
+		std::cout << "PASSEEEEE" << std::endl;
+			// ca passe pas
 		close(fd[1]);
 		
-		if (scriptType.compare("py"))
+		if (!scriptType.compare("py"))
 			scriptInterpreter = "/usr/bin/python";
 		else
 			scriptInterpreter = "/usr/bin/php";
@@ -294,9 +298,20 @@ std::string  Requests::execCgi(const std::string& scriptType)
 		char *args[] = { const_cast<char*>(scriptInterpreter), const_cast<char*>(_path.c_str()), NULL };
 
 		execve(scriptInterpreter, args, env);
-		return (delete [] env, getPage("error/500.html", "HTTP/1.1 500 Internal Server Error\n\n"));
+		delete [] env;
+		exit(EXIT_FAILURE);
 	}
-	
+
+	//passe
+
+	if (waitpid(childPid, &childValue, WUNTRACED) == -1)
+			return (close(fd[0]), close(fd[1]), getPage("error/500.html", "HTTP/1.1 500 Internal Server Error"));
+	if (WEXITSTATUS(childValue) == 1)
+	{
+	std::cout << "PASSEEEEE par" << WEXITSTATUS(childValue) << std::endl;
+		return (close(fd[0]), close(fd[1]), getPage("error/500.html", "HTTP/1.1 500 Internal Server Error"));
+	}
+	//passe pas
 	if (!this->_method.compare("POST"))
 	{
 		close(fdBody[0]);
