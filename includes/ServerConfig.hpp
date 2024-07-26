@@ -18,7 +18,6 @@ public:
     bool hasListen;
     
     ServerConfig();
-    //ServerConfig(const std::string &host, const std::string &serverName, int port);
     ServerConfig(ServerConfig const &other);
     ServerConfig &operator=(ServerConfig const &other);
     ~ServerConfig();

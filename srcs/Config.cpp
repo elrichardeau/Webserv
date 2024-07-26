@@ -6,73 +6,39 @@ Config::Config(const std::string &filename)
 }
 Config::~Config(){}
 
-bool arePortsEqual(const std::vector<int> &ports1, const std::vector<int> &ports2)
+bool commonPorts(const std::vector<int> &ports1, const std::vector<int> &ports2)
 {
-    // if (ports1.size() != ports2.size())
-    // {
-    //     std::cout << "Taille de ports different." << std::endl;
-    //     return (false);
-    // }
-    // for (size_t i = 0; i < ports1.size(); ++i)
-    // {
-    //     if (ports1[i] != ports2[i])
-    //     {
-    //         std::cout << "Ports differents: " << ports1[i] << " et " << ports2[i] <<std::endl;
-    //         return (false);
-    //     }
-    // }
-    // return (true)
-    std::set<int> set1(ports1.begin(), ports1.end());
-    std::set<int> set2(ports2.begin(), ports2.end());
-    return set1 == set2;;
-}
+    std::vector<int> modifiablePorts1 = ports1;
+    std::vector<int> modifiablePorts2 = ports2;
 
-// bool hasUniquePorts(const std::vector<int> &ports)
-// {
-//     std::vector<int> sortedPorts = ports;
-//     sort(sortedPorts.begin(), sortedPorts.end());
-//     for (size_t i = 1; i < sortedPorts.size(); ++i)
-//     {
-//         std::cout << "Taille de listen: " << sortedPorts.size() << std::endl;
-//         if (sortedPorts[i-1] == sortedPorts[i])
-//         {
-//             std::cout << "Port identique: " << sortedPorts[i] << std::endl;
-//             return (false);
-//         }
-//     }
-//     return (true);
-// }
-// bool isServerDifferent(const ServerConfig &existingServer, const ServerConfig& newServer)
-// {
-//     if (existingServer.getServerName() == newServer.getServerName() &&
-//         existingServer.getHost() == newServer.getHost() &&
-//         arePortsEqual(existingServer.getPorts(), newServer.getPorts())) 
-//     {
-//         return false;
-//     }
-//     return true;
-// }
+    std::sort(modifiablePorts1.begin(), modifiablePorts1.end());
+    std::sort(modifiablePorts2.begin(), modifiablePorts2.end());
+
+    std::vector<int> commonPorts(modifiablePorts1.size());
+    std::vector<int>::iterator it = std::set_intersection(modifiablePorts1.begin(), \
+    modifiablePorts1.end(), modifiablePorts2.begin(), modifiablePorts2.end(), \
+    commonPorts.begin());
+    commonPorts.resize(it - commonPorts.begin()); 
+    return (!commonPorts.empty());
+}
 
 bool Config::isUniqueServer(const ServerConfig &newServer)
 {
-    
-    for (size_t i = 0; i < servers.size(); ++i)
+    for (std::vector<ServerConfig>::const_iterator it = servers.begin(); it != servers.end(); ++it) 
     {
-        if (servers[i].getServerName() == newServer.getServerName() &&
-            servers[i].getHost() == newServer.getHost() &&
-            arePortsEqual(server.getPorts(), newServer.getPorts()))
+        if (it->getServerName() == newServer.getServerName() &&
+            it->getHost() == newServer.getHost() &&
+            commonPorts(it->getPorts(), newServer.getPorts()))
         {
-            return false;
+            return (false);
         }
-       //std::find(servers[i].getPorts().begin(), servers[i].getPorts().end(), newServer.getPorts()[0]) != servers[i].getPorts().end()
     }
-    return true;
+    return (true);
 }
-
 void Config::addServer(const ServerConfig &server) 
 { 
     if (!isUniqueServer(server))
-        throw InvalidConfig("Duplicate server configuration detected.");
+       throw InvalidConfig("Duplicate server configuration detected.");
     servers.push_back(server);
     std::cout << "Server added. Total servers: " << servers.size() << std::endl;
 }

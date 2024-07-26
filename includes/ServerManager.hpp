@@ -16,7 +16,7 @@ class ServerManager {
 		void controlSockets(int epollFd);
 		int compareServerSocket(int eventFd);
 		void handleServerSocket(int epollFd, int index);
-		void handleClientSocket(epoll_event event);
+		//void handleClientSocket(epoll_event event);
 		std::vector<Server> getServers() const;
 
 	private :
