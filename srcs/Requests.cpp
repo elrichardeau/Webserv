@@ -1,11 +1,4 @@
-#include <unistd.h>
-#include <string>
-#include <cstring>
-#include <iostream>
-#include <fstream>
-#include <sstream>
-#include <sys/stat.h>
-#include <dirent.h>
+
 #include "../includes/Requests.hpp"
 
 std::string itostr(int nb) {
@@ -16,7 +9,7 @@ std::string itostr(int nb) {
 	return str;
 }
 
-std::vector<std::string> split(std::string buf, std::string find) {
+std::vector<std::string> split(std::string buf, const std::string &find) {
 	std::vector<std::string> vector;
 	if (buf.find(find) == std::string::npos) {
 		vector.push_back(buf.substr(0, buf.size()));
@@ -29,24 +22,25 @@ std::vector<std::string> split(std::string buf, std::string find) {
 	return vector;
 }
 
-bool isMethodExisted(std::string line) {
-	std::string method[9] = {"GET", "HEAD", "POST", "PUT", "DELETE", "CONNECT", "OPTIONS", "TRACE", "PATCH"};
-	for (unsigned int i = 0; i < 9; i++)
-		if (!line.compare(0, strlen(method[i].c_str()), method[i].c_str()))
-			return true;
-	return false;
-}
-
-bool isMethodAccepted(std::string line) {
-	std::string method[3] = {"GET", "POST", "DELETE"};
-	for (unsigned int i = 0; i < 3; i++)
-		if (!line.compare(0, strlen(method[i].c_str()), method[i].c_str()))
-			return true;
-	return false;
+bool isSyntaxGood(std::vector<std::string> &request) {
+	size_t find;
+	for (unsigned int i = 0; i < request.size(); i++) {
+		find = request[i].find("\r");
+		if (find == std::string::npos)
+			return false;
+		request[i].erase(find);
+	}
+	if (split(request[0], " ").size() != 3)
+		return false;
+	for (unsigned int i = 1; i < request.size() - 1; i++) {
+		find = request[i].find(": ");
+		if (find == std::string::npos)
+			return false;
+	}
+	return true;
 }
 
 std::vector<std::string> getAccept(std::string line) {
-	line.erase(0, 8);
 	std::vector<std::string> accept = split(line, ",");
 	for (unsigned int i = 0; i < accept.size(); i++) {
 		size_t find = accept[i].find(";");
@@ -65,57 +59,26 @@ std::vector<std::string> getAccept(std::string line) {
 	return accept;
 }
 
-bool checkRequestSyntax(std::vector<std::string> request) {
-	size_t find;
-	for (unsigned int i = 0; i < request.size(); i++) {
-		find = request[i].find("\r");
-		if (find == std::string::npos)
-			return false;
+Requests::Requests(const std::string &buf, const Server &servParam) : _servParam(servParam) {
+	std::vector<std::string> bufSplitted = split(buf, "\n");
+	if (!isSyntaxGood(bufSplitted))
+		this->_statusCode = BAD_REQUEST;
+	else {
+		std::map<std::string, std::string> request;
+		std::vector<std::string> methodPathProtocol = split(bufSplitted[0], " ");
+		request.insert(std::make_pair("Method", methodPathProtocol[0]));
+		request.insert(std::make_pair("Path", methodPathProtocol[1]));
+		request.insert(std::make_pair("Protocol", methodPathProtocol[2]));
+		for (size_t i = 1; i < bufSplitted.size() - 1; i++)
+			request.insert(std::make_pair(bufSplitted[i].substr(0, bufSplitted[i].find(": ")), bufSplitted[i].substr(bufSplitted[i].find(": ") + 2, bufSplitted[i].size())));
+		this->_statusCode = OK;
+		this->_method = request["Method"];
+		this->_path = "." + request["Path"];
+		this->_protocol = request["Protocol"];
+		this->_accept = getAccept(request["Accept"]);
 	}
-	std::vector<std::string> firstLine = split(request[0], " ");
-	if (firstLine.size() != 3)
-		return false;
-	for (unsigned int i = 1; i < request.size() - 1; i++) {
-		std::vector<std::string> otherLine = split(request[i], ":");
-		if (otherLine.size() < 2)
-			return false;
-	}
-	return true;
 }
 
-Requests readRequest(std::string buf) {
-	std::vector<std::string> request = split(buf, "\n");
-	if (!checkRequestSyntax(request))
-		return Requests(BAD_REQUEST);
-	std::vector<std::string> methodPathProtocol, acceptedList, tmp;
-	for (unsigned int i = 0; i < request.size(); i++) {
-		if (request[i].find("\r", 0) != std::string::npos)
-			request[i].erase(request[i].find("\r", 0));
-		if (isMethodExisted(request[i])) {
-			if (!methodPathProtocol.empty())
-				return Requests(BAD_REQUEST);
-			methodPathProtocol = split(request[i], " ");
-			if (methodPathProtocol.size() != 3)
-				return Requests(BAD_REQUEST);
-			if (!isMethodAccepted(methodPathProtocol[0]))
-				return Requests(METHOD_NOT_ALLOWED);
-			if (methodPathProtocol[2].compare("HTTP/1.1"))
-				return Requests(HTTP_VERSION_NOT_SUPPORTED);
-		}
-		if (!request[i].compare(0, 7, "Accept:")) {
-			tmp = getAccept(request[i]);
-			acceptedList.insert(acceptedList.end(), tmp.begin(), tmp.end());
-		}
-	}
-	if (methodPathProtocol.empty())
-		return Requests(BAD_REQUEST);
-	if (acceptedList.empty())
-		return Requests(NOT_ACCEPTABLE);
-	return Requests(methodPathProtocol[0], methodPathProtocol[1], methodPathProtocol[2], acceptedList);
-}
-
-Requests::Requests(int statusCode) : _statusCode(statusCode), _method(""), _path(""), _accept(0) {}
-Requests::Requests(const std::string &method, const std::string &path, const std::string &protocol, std::vector<std::string> &accept) :  _statusCode(200), _method(method), _path("." + path), _protocol(protocol), _accept(accept) {}
 Requests::~Requests() {}
 
 bool Requests::checkExtension() {
@@ -299,32 +262,6 @@ std::string  Requests::execCgi(const std::string& scriptType)
 	return getPage(scriptContent, "HTTP/1.1 200 OK\n\n");
 }
 
-
-// std::string Requests::getResponse() {
-// 	chdir("./pages");
-// 	if (isSyntaxError())
-// 		return getPage("error/400.html", "HTTP/1.1 400 Bad Request\n\n");
-// 	if (access((this->_path).c_str(), F_OK))
-// 		return getPage("error/404.html", "HTTP/1.1 404 Not Found\n\n");
-// 	if (access((this->_path).c_str(), R_OK))
-// 		return getPage("error/403.html", "HTTP/1.1 403 Forbidden\n\n");
-// 	if (this->_path == "./")
-// 		return getPage("default.html", "HTTP/1.1 200 OK\n\n");
-	
-// 	//partie cgi elodie
-// 	std::vector<std::string> words = Requests::split(this->_path, ".");
-// 	int nb_words = words.size();
-// 	if (nb_words == 1)
-// 		return getPage("error/400.html", "HTTP/1.1 400 Bad Request");
-// 	if (words[nb_words - 1] == "py" || words[nb_words - 1] == "php")
-// 	{
-// 		if (access((this->_path).c_str(), X_OK))
-// 			return getPage("error/403.html", "HTTP/1.1 403 Forbidden");
-// 		return (execCgi(words[nb_words - 1]));
-// 	}
-// 	return getPage(this->_path, "HTTP/1.1 200 OK");
-// }
-
 std::string Requests::getResponse() {
 	chdir("./pages");
 	if (this->_statusCode == OK)
@@ -420,5 +357,4 @@ std::string Requests::setResponse() {
 	response.append("Server: Webserv\n");
 	response.append("\n");
 	return response;
-
 }
