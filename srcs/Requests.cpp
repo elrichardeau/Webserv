@@ -238,7 +238,7 @@ std::vector<std::string> Requests::createCgiEnv()
 	else if (!this->_method.compare("POST"))
 	{
 		exportVar(env, "CONTENT_LENGTH", "");
-		exportVar(env, "CONTENT_TYPE", ""); //type decontenu du body 
+		exportVar(env, "CONTENT_TYPE", "");
 	}
 	return (env);
 }
@@ -278,7 +278,7 @@ std::string  Requests::execCgi(const std::string& scriptType)
 		}
 
 		close(fd[0]);
-		if (dup2(fd[1], STDOUT_FILENO) == -1)
+		if (dup2(fd[1], STDOUT_FILENO) == -1) 
 		{
 			perror("PIPE ERROR ");
 			exit(EXIT_FAILURE);
@@ -286,7 +286,7 @@ std::string  Requests::execCgi(const std::string& scriptType)
 		close(fd[1]);
 		
 		if (!scriptType.compare("py"))
-			scriptInterpreter = "/usr/bin/python";
+			scriptInterpreter = "/usr/bin/python3";
 		else
 			scriptInterpreter = "/usr/bin/php";
 			
@@ -303,21 +303,17 @@ std::string  Requests::execCgi(const std::string& scriptType)
 	if (waitpid(childPid, &childValue, WUNTRACED) == -1)
 			return (close(fd[0]), close(fd[1]), getPage("error/500.html", "HTTP/1.1 500 Internal Server Error\n\n"));
 	if (WEXITSTATUS(childValue) == 1)
-	{
-	std::cout << "PASSEEEEE par" << WEXITSTATUS(childValue) << std::endl;
 		return (close(fd[0]), close(fd[1]), getPage("error/500.html", "HTTP/1.1 500 Internal Server Error\n\n"));
-	}
-	//passe pas
+
 	if (!this->_method.compare("POST"))
 	{
 		close(fdBody[0]);
 		close(fdBody[1]);
 	}
 
-	close(fd[1]);
+	close(fd[1]); 
     std::string scriptContent = readFromPipe(fd[0]);
 	close(fd[0]);
-	std::cerr << scriptContent << std::endl;
 	std::string line;
 	std::string response = "HTTP/1.1 200 OK\n\n";
         response.append(scriptContent + "\n");
