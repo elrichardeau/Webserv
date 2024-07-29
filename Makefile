@@ -8,7 +8,8 @@ SOURCES = main.cpp \
 		  ServerConfig.cpp \
 		  Requests.cpp \
 		  Server.cpp \
-		  ServerManager.cpp
+		  ServerManager.cpp \
+		  ErrorPage.cpp
 
 SRC = srcs/
 DIR = objs_deps/

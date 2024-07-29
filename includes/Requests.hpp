@@ -38,8 +38,6 @@ class Requests {
 		char**					 createEnv();
 		char **					 vectorToCharArray(const std::vector<std::string> &vector);
 	std::vector<std::string> 	 createCgiEnv();
-		
-
 
 	private :
 
@@ -54,7 +52,4 @@ class Requests {
 		bool checkExtension();
 		std::string setResponse();
 		std::string getErrorPage();
-
 };
-
-Requests readRequest(const std::string &buf);

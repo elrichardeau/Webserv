@@ -4,6 +4,7 @@
 #include <vector>
 #include <arpa/inet.h>
 #include "ServerConfig.hpp"
+#include "ErrorPage.hpp"
 
 class Server {
 
@@ -36,4 +37,5 @@ class Server {
         std::string _root;
         std::vector<LocationConfig> _locations;
         std::map<int, std::string> _errorPages;
+        // ErrorPage _errorPages;
 };
