@@ -333,9 +333,9 @@ void Config::server(std::vector<std::string> &tokens, ServerConfig &current_serv
 
 void Config::errorPage(std::vector<std::string> &tokens, ServerConfig &current_server)
 {
-    ErrorPageConfig errorPages;
-    errorPages.setErrorPage(std::atoi(tokens[0].c_str()), tokens[1]);
-    current_server.addErrorPage(errorPages);
+    int errorCode = std::atoi(tokens[0].c_str());
+    const std::string &errorPath = tokens[1];
+    current_server.addErrorPage(errorCode, errorPath);
 }
 
 void Config::inBlocks(bool &in_location_block, bool &in_server_block, bool &in_error_page_block, ServerConfig &current_server, LocationConfig &current_location)

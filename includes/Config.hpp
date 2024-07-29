@@ -12,7 +12,6 @@
 #include <stdexcept>
 #include <set>
 #include "LocationConfig.hpp"
-#include "ErrorPageConfig.hpp"
 #include "ServerConfig.hpp"
 
 class Config 

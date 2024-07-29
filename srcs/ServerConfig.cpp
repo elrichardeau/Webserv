@@ -66,9 +66,14 @@ void ServerConfig::addLocation(const LocationConfig &loc)
 	locations.push_back(loc);
 }
 
-void ServerConfig::addErrorPage(const ErrorPageConfig &error)
-{ 
-    error_pages.push_back(error);
+//void ServerConfig::addErrorPage(const ErrorPageConfig &error)
+//{ 
+//    error_pages.push_back(error);
+//}
+
+void ServerConfig::addErrorPage(int code, const std::string &path)
+{
+    error_pages[code] = path;
 }
 
 std::string ServerConfig::getHost() const 
@@ -106,9 +111,14 @@ std::vector<LocationConfig> ServerConfig::getLocations() const
 	return (this->locations);
 }
 
-std::vector<ErrorPageConfig> ServerConfig::getErrorPages() const
+//std::vector<ErrorPageConfig> ServerConfig::getErrorPages() const
+//{
+//	return (this->error_pages); 
+//}
+
+std::map<int, std::string> ServerConfig::getErrorPages() const
 {
-	return (this->error_pages); 
+    return (this->error_pages);
 }
 
 bool ServerConfig::isValid() const

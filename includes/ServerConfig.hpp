@@ -7,7 +7,6 @@
 #include <sstream>
 #include <algorithm>
 #include "LocationConfig.hpp"
-#include "ErrorPageConfig.hpp"
 
 class ServerConfig
 {
@@ -28,14 +27,14 @@ public:
     void setClientMaxBodySize(int size);
     void setRoot(const std::string &rt);
     void addLocation(const LocationConfig &loc);
-    void addErrorPage(const ErrorPageConfig &error);
+    void addErrorPage(int code, const std::string &path);
 
     std::string getHost() const;
     std::string getServerName() const;
     int getClientMaxBodySize() const;
     std::string getRoot() const;
     std::vector<LocationConfig> getLocations() const;
-    std::vector<ErrorPageConfig> getErrorPages() const;
+    std::map<int, std::string> getErrorPages() const;
     std::vector<int> getPorts() const;
     bool isValid() const;
 
@@ -46,5 +45,5 @@ private:
     std::string root;
     std::vector<int> ports;
     std::vector<LocationConfig> locations;
-    std::vector<ErrorPageConfig> error_pages;
+    std::map<int, std::string> error_pages; 
 };
