@@ -90,13 +90,26 @@ bool isValidIPAddress(const std::string &ip)
 
 void Config::allowMethods(std::vector<std::string> &tokens, LocationConfig &current_location)
 {
+    std::vector<std::string> validMethods;
+    validMethods.push_back("GET");
+    validMethods.push_back("POST");
+    validMethods.push_back("DELETE");
+    validMethods.push_back("PUT");
+    validMethods.push_back("HEAD");
+    validMethods.push_back("OPTIONS");
+    validMethods.push_back("PATCH");
+    validMethods.push_back("CONNECT");
+    validMethods.push_back("TRACE");
     if (tokens[0] == "allow_methods")
     {
         if (tokens.size() < 2)
             throw InvalidConfig("Error: no specified allow methods.");
         for (size_t i = 1; i < tokens.size(); ++i)
         {
-            current_location.addAllowMethod(tokens[i]);
+            if (std::find(validMethods.begin(), validMethods.end(), tokens[i]) != validMethods.end())
+                current_location.addAllowMethod(tokens[i]);
+            else
+                throw InvalidConfig("Error: Invalid HTTP method specified.");
         }
     }
 }
