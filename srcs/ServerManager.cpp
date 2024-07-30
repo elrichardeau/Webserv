@@ -1,18 +1,16 @@
 
-#include <unistd.h>
-//#include <sys/epoll.h>
-#include <arpa/inet.h>
 #include "../includes/ServerManager.hpp"
-#include "../includes/Requests.hpp"
 
 #define MAX_EVENTS 10
 #define BUF_SIZE 1024
 
 /*
 ServerManager::ServerManager(std::vector<ServerConfig> servers) {
-	for (size_t i = 0; i < servers.size(); i++)
-		for (size_t j = 0; j < servers[i].getPorts().size(); j++)
-			this->_servers.push_back(Server(servers[i].getHost(), servers[i].getServerName(), servers[i].getPorts()[j]));
+	for (size_t i = 0; i < servers.size(); i++) {
+		std::vector<int> ports = servers[i].getPorts();
+		for (size_t j = 0; j < ports.size(); j++)
+			this->_servers.push_back(Server(servers[i], ports[j]));
+	}
 }
 
 ServerManager::~ServerManager() {
@@ -28,7 +26,7 @@ void ServerManager::createSockets() {
 			continue;
 		if (setsockopt(this->_servers[i].getServerSocket(), SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt)))
 			throw SocketFailed();
-		if (bind(this->_servers[i].getServerSocket(), (struct sockaddr *)&this->_servers[i]._address, this->_servers[i]._addrLen) < 0)
+		if (bind(this->_servers[i].getServerSocket(), (struct sockaddr *)&this->_servers[i].getAddress(), this->_servers[i].getAddrLen()) < 0)
 			throw SocketFailed();
 		if (listen(this->_servers[i].getServerSocket(), 10) < 0)
 			throw SocketFailed();
@@ -54,21 +52,37 @@ int ServerManager::compareServerSocket(int eventFd) {
 
 void ServerManager::handleServerSocket(int epollFd, int index) {
 	struct epoll_event event;
-	int clientSocket = accept(this->_servers[index].getServerSocket(), (struct sockaddr *)&this->_servers[index]._address, (socklen_t *)&this->_servers[index]._addrLen);
+	int clientSocket = accept(this->_servers[index].getServerSocket(), (struct sockaddr *)&this->_servers[index].getAddress(), (socklen_t *)&this->_servers[index].getAddrLen());
 	if (clientSocket < 0)
 		throw SocketFailed();
 	event.events = EPOLLIN;
 	event.data.fd = clientSocket;
+	this->_servers[index].addClientSocket(clientSocket);
 	if (epoll_ctl(epollFd, EPOLL_CTL_ADD, clientSocket, &event) == -1)
 		throw SocketFailed();
 }
 
+int ServerManager::compareClientSocket(int eventFd) {
+	for (size_t i = 0; i < this->_servers.size(); i++) {
+		std::vector<int> clientSockets = this->_servers[i].getClientSockets();
+		for (size_t j = 0; j < clientSockets.size(); j++) {
+			if (eventFd == clientSockets[j]) {
+				this->_servers[i].rmClientSocket(j);
+				return i;
+			}
+		}
+	}
+    return -1;
+}
+
 void ServerManager::handleClientSocket(epoll_event event) {
 	char buffer[BUF_SIZE] = {0};
-	if(recv(event.data.fd, buffer, 1024, 0) <= 0)
+	int index = compareClientSocket(event.data.fd);
+	std::cout << "index : " << index << std::endl;
+	if(recv(event.data.fd, buffer, BUF_SIZE, 0) <= 0)
 		close(event.data.fd);
 	else {
-		Requests req = readRequest(buffer);
+		Requests req(buffer, this->_servers[index]);
 		std::string response = req.getResponse();
 		send(event.data.fd, response.c_str(), response.size(), 0);
 		close(event.data.fd);

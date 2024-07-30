@@ -1,26 +1,41 @@
 #pragma once
 
 #include <string>
+#include <vector>
+#include <arpa/inet.h>
+#include "ServerConfig.hpp"
+#include "ErrorPage.hpp"
 
 class Server {
 
     public :
 
-        Server(const std::string &host, const std::string &serverName, int port);
+        Server(ServerConfig serverConfig, int port);
         ~Server();
 
+        struct sockaddr_in &getAddress();
+        int &getAddrLen();
         std::string getHost() const;
-        std::string getServerName() const;
         int getPort() const;
-        int getServerSocket() const;
+        std::string getServerName() const;
         void setServerSocket(int serverSocket);
-        struct sockaddr_in _address;
-        int _addrLen;
+        int getServerSocket() const;
+        void addClientSocket(int clientSocket);
+        std::vector<int> getClientSockets() const;
+        void rmClientSocket(int index);
 
     private :
 
         int _serverSocket;
+        struct sockaddr_in _address;
+        int _addrLen;
         int _port;
         const std::string _host;
         const std::string _serverName;
+        std::vector<int> _clientSockets;
+        int _clientMaxBodySize;
+        std::string _root;
+        std::vector<LocationConfig> _locations;
+        std::map<int, std::string> _errorPages;
+        // ErrorPage _errorPages;
 };
