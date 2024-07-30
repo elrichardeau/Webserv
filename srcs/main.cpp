@@ -5,7 +5,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <unistd.h>
-//#include <sys/epoll.h>
+#include <sys/epoll.h>
 #include <sstream>
 #include <arpa/inet.h>
 #include "../includes/Config.hpp"

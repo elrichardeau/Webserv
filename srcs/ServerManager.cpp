@@ -90,3 +90,4 @@ void ServerManager::handleClientSocket(epoll_event event) {
 
 std::vector<Server> ServerManager::getServers() const {return this->_servers;}
 const char* ServerManager::SocketFailed::what() const throw() {return "Error: Socket Failed !";}
+
