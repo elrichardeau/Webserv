@@ -64,7 +64,7 @@ void Requests::getQuery() {
 	if (find != std::string::npos) {
 		this->_query = this->_path.substr(find + 1, this->_path.size());
 		this->_path.erase(find, this->_path.size());
-		std::cout << "query = " << this->_query << " et path = " << this->_path << std::endl;
+
 	}
 }
 
@@ -215,7 +215,6 @@ std::string  Requests::execCgi(const std::string& scriptType)
 	int fdBody[2];
 	const char *scriptInterpreter;
 
-	std::cout << "PASSE" << std::endl;
 	if (pipe(fd) == -1)
 		return (getPage("error/500.html", "HTTP/1.1 500 Internal Server Error\n\n"));
 	childPid = fork();
