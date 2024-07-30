@@ -58,6 +58,16 @@ std::vector<std::string> getAccept(std::string line) {
 	return accept;
 }
 
+void Requests::getQuery() {
+	size_t find = this->_path.find("?");
+
+	if (find != std::string::npos) {
+		this->_query = this->_path.substr(find + 1, this->_path.size());
+		this->_path.erase(find, this->_path.size());
+		std::cout << "query = " << this->_query << " et path = " << this->_path << std::endl;
+	}
+}
+
 Requests::Requests(const std::string &buf, const Server &servParam) : _servParam(servParam) {
 	std::vector<std::string> bufSplitted = split(buf, "\n");
 	if (!isSyntaxGood(bufSplitted))
@@ -75,6 +85,8 @@ Requests::Requests(const std::string &buf, const Server &servParam) : _servParam
 		this->_path = "." + request["Path"];
 		this->_protocol = request["Protocol"];
 		this->_accept = getAccept(request["Accept"]);
+		getQuery();
+		setCgiPathPy(extractCgiPathPy());
 	}
 }
 
@@ -108,6 +120,7 @@ bool Requests::checkExtension() {
 
 void Requests::checkPage() {
 	DIR *dir = opendir(this->_path.c_str());
+
 	if (dir != NULL) {
 		closedir(dir);
 		std::string slash = "";
@@ -202,6 +215,7 @@ std::string  Requests::execCgi(const std::string& scriptType)
 	int fdBody[2];
 	const char *scriptInterpreter;
 
+	std::cout << "PASSE" << std::endl;
 	if (pipe(fd) == -1)
 		return (getPage("error/500.html", "HTTP/1.1 500 Internal Server Error\n\n"));
 	childPid = fork();
@@ -235,12 +249,12 @@ std::string  Requests::execCgi(const std::string& scriptType)
 			exit(EXIT_FAILURE);
 		}
 		close(fd[1]);
-		
+
 		if (!scriptType.compare("py"))
-			scriptInterpreter = "/usr/bin/python3";
+			scriptInterpreter = this->_cgiPathPy.c_str();
 		else
 			scriptInterpreter = "/usr/bin/php";
-			
+		
 		char **env = vectorToCharArray(createCgiEnv());
 		for (int i = 0; i < 5; i++)
 			std::cerr << env[i] << std::endl;
@@ -367,3 +381,21 @@ std::string Requests::setResponse() {
 	response.append("\n");
 	return response;
 }
+
+
+std::string Requests::extractCgiPathPy() const {
+	std::vector<LocationConfig> locations = this->_servParam.getLocations();
+	std::string cgiPath;
+
+	for (size_t i = 0; i < locations.size(); i++) {
+		if (locations[i].getPath() == "/cgi-bin") {
+			 std::map<std::string, std::string> cgiPaths = locations[i].getCgiPaths();
+			 std::map<std::string, std::string>::iterator it = cgiPaths.find(".py");
+            cgiPath = it->second;
+			}
+		}
+	return cgiPath;
+}
+
+void Requests::setCgiPathPy(const std::string &path) {this->_cgiPathPy = path;}
+std::string Requests::getCgiPathPy() const {return this->_cgiPathPy;}

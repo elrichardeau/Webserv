@@ -35,11 +35,14 @@ class Requests {
 		~Requests();
 		std::string getResponse();
 
-		//cgi elodie
 		std::string 			 execCgi(const std::string& scriptType);
-		char**					 createEnv();
 		char **					 vectorToCharArray(const std::vector<std::string> &vector);
-	std::vector<std::string> 	 createCgiEnv();
+	    std::vector<std::string> 	 createCgiEnv();
+		void getQuery();
+
+		std::string extractCgiPathPy() const;
+		void setCgiPathPy(const std::string &path);
+		std::string getCgiPathPy() const;
 
 	private :
 
@@ -55,4 +58,6 @@ class Requests {
 		bool checkExtension();
 		std::string setResponse();
 		std::string getErrorPage();
+		std::string _cgiPathPy;
+		std::string _cgiPathPhp;
 };

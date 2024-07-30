@@ -27,3 +27,4 @@ int Server::getServerSocket() const {return this->_serverSocket;}
 void Server::addClientSocket(int clientSocket) {this->_clientSockets.push_back(clientSocket);}
 std::vector<int> Server::getClientSockets() const {return this->_clientSockets;}
 void Server::rmClientSocket(int index) {this->_clientSockets.erase(this->_clientSockets.begin() + index);}
+std::vector<LocationConfig> Server::getLocations() const {return this->_locations;}
