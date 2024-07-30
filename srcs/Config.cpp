@@ -89,40 +89,15 @@ void Config::allowMethods(std::vector<std::string> &tokens, LocationConfig &curr
 {
     if (tokens[0] == "allow_methods")
     {
-        int get = 0, dt = 0, post = 0;
-        if (tokens.size() != 4)
+        if (tokens.size() < 2)
             throw InvalidConfig("Error: no specified allow methods.");
         for (size_t i = 1; i < tokens.size(); ++i)
         {
-            if (tokens[i] == "GET")
-            {
-                if (get == 1)
-                    throw InvalidConfig("Error: Duplicate allow methods.");
-                get = 1;
-            }
-            else if (tokens[i] == "POST")
-            {
-                if (post == 1)
-                    throw InvalidConfig("Error: Duplicate allow methods.");
-                post = 1;
-            } 
-            else if (tokens[i] == "DELETE")
-            {
-                if (dt == 1)
-                    throw InvalidConfig("Error: Duplicate allow methods.");
-                dt = 1;
-            }
-            else 
-                throw InvalidConfig("Error: Invalid allow methods.");
+            current_location.addAllowMethod(tokens[i]);
         }
-        if (get == 1)
-            current_location.addAllowMethod("GET");
-        if (post == 1)
-            current_location.addAllowMethod("POST");
-        if (dt == 1)
-            current_location.addAllowMethod("DELETE");
-    } 
+    }
 }
+        
 
 void Config::index(std::vector<std::string> &tokens, LocationConfig &current_location)
 {
@@ -194,14 +169,27 @@ void Config::uploadDir(std::vector<std::string> &tokens, LocationConfig &current
     }
 }
 
-void Config::autoIndex(std::vector<std::string> &tokens, LocationConfig &current_location)
+bool Config::autoIndex(std::vector<std::string> &tokens, LocationConfig &current_location)
 {
     if (tokens[0] == "autoindex")
     {
-        if (tokens.size() < 2 || (tokens[1] != "on" && tokens[1] != "off"))
+        if (tokens.size() < 2)
             throw InvalidConfig("Error: No autoindex specified.");
-        current_location.setAutoIndex(tokens[1]);
+        const std::string &value = tokens[1];
+        if (value == "on")
+        {
+            current_location.setAutoIndex(value);
+            return (true);
+        }
+        else if (value == "off")
+        {
+            current_location.setAutoIndex(value);
+            return (false);
+        }
+        else 
+            throw InvalidConfig("Error: Invalid autoindex.");
     }
+    return (false);
 }
 
 std::vector<std::string> Config::split(const std::string &str, char delimiter)
@@ -239,13 +227,13 @@ void Config::location(std::vector<std::string> &tokens, LocationConfig &current_
     else
     {
         allowMethods(tokens, current_location);
+        autoIndex(tokens, current_location);
         index(tokens, current_location);
         root(tokens, current_location);
         cgiExtensions(tokens, current_location);
         cgiPaths(tokens, current_location);
         uploadDir(tokens, current_location);
     }
-    
 }
 
 void Config::listen(std::vector<std::string> &tokens, ServerConfig &current_server)
@@ -333,6 +321,8 @@ void Config::server(std::vector<std::string> &tokens, ServerConfig &current_serv
 
 void Config::errorPage(std::vector<std::string> &tokens, ServerConfig &current_server)
 {
+    if (tokens.size() < 2)
+        throw InvalidConfig("Error: Insufficient parameters from error page configuration.");
     int errorCode = std::atoi(tokens[0].c_str());
     const std::string &errorPath = tokens[1];
     current_server.addErrorPage(errorCode, errorPath);
@@ -342,6 +332,7 @@ void Config::inBlocks(bool &in_location_block, bool &in_server_block, bool &in_e
 {
     if (in_location_block)
     {
+        finalizeLocation(current_location);
         current_server.addLocation(current_location);
         in_location_block = false;
     } 
@@ -438,6 +429,19 @@ void Config::handleReturn(std::vector<std::string> &tokens, LocationConfig &curr
             throw InvalidConfig("Error: Invalid return code.");
         current_location.setReturnDirective(tokens[1] + " " + tokens[2]);
     }
+}
+
+void Config::finalizeLocation(LocationConfig &current_location)
+{
+    if (current_location.getAllowMethods().empty())
+    {
+        std::vector<std::string> defaultMethods;
+        defaultMethods.push_back("GET");
+        defaultMethods.push_back("HEAD");
+        current_location.setAllowMethods(defaultMethods);
+    }
+    if (current_location.getRoot().empty())
+        current_location.setRoot("./");
 }
 
 void Config::readConfig(const std::string &filename)

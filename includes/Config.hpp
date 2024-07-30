@@ -46,14 +46,14 @@ class Config
 		static void cgiExtensions(std::vector<std::string> &tokens, LocationConfig &current_location);
 		static void cgiPaths(std::vector<std::string> &tokens, LocationConfig &current_location);
 		static void uploadDir(std::vector<std::string> &tokens, LocationConfig &current_location);
-		static void autoIndex(std::vector<std::string> &tokens, LocationConfig &current_location);
+		static bool autoIndex(std::vector<std::string> &tokens, LocationConfig &current_location);
 
 		static void listen(std::vector<std::string> &tokens, ServerConfig &current_server);
 		static void host(std::vector<std::string> &tokens, ServerConfig &current_server);
 		static void serverName(std::vector<std::string> &tokens, ServerConfig &current_server);
 		static void body(std::vector<std::string> &tokens, ServerConfig &current_server);
 		static void root(std::vector<std::string> &tokens, ServerConfig &current_server);
-
+		static void finalizeLocation(LocationConfig &current_location);
 
 	class InvalidConfig : public std::exception
 	{

@@ -1,8 +1,10 @@
 #include "../includes/LocationConfig.hpp"
 
-LocationConfig::LocationConfig(){}
+LocationConfig::LocationConfig()
+{}
 
-LocationConfig::LocationConfig(LocationConfig const &other) : path(other.path), allow_methods(other.allow_methods), index(other.index),
+
+LocationConfig::LocationConfig(LocationConfig const &other) : path(other.path), allowMethods(other.allowMethods), index(other.index),
   autoindex(other.autoindex), root(other.root), cgi_extension(other.cgi_extension),
   cgi_path(other.cgi_path), upload_dir(other.upload_dir)
 {}
@@ -12,7 +14,7 @@ LocationConfig &LocationConfig::operator=(LocationConfig const &other)
 	if (this != &other)
     {
         path = other.path;
-        allow_methods = other.allow_methods;
+        allowMethods = other.allowMethods;
         index = other.index;
         autoindex = other.autoindex;
         root = other.root;
@@ -31,9 +33,15 @@ void LocationConfig::setPath(const std::string &p)
 	this->path = p; 
 }
 
+void LocationConfig::setAllowMethods(const std::vector<std::string> &methods)
+{
+	if (!methods.empty())
+		allowMethods = methods;
+}
+
 void LocationConfig::addAllowMethod(const std::string &method)
 { 
-	allow_methods.push_back(method); 
+	allowMethods.push_back(method);	
 }
 
 void LocationConfig::setIndex(const std::string &idx) 
@@ -48,7 +56,8 @@ void LocationConfig::setAutoIndex(const std::string &autoidx)
 
 void LocationConfig::setRoot(const std::string &rt)
 { 
-	this->root = rt; 
+	if (!rt.empty())
+		this->root = rt; 
 }
 
 void LocationConfig::addCgiExtension(const std::string &ext)
@@ -79,7 +88,7 @@ std::string LocationConfig::getPath() const
 
 std::vector<std::string> LocationConfig::getAllowMethods() const
 {
-	return (this->allow_methods); 
+	return (this->allowMethods); 
 }
 
 std::string LocationConfig::getIndex() const
