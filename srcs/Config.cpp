@@ -351,10 +351,11 @@ void Config::configLocation(bool &in_location_block, LocationConfig &current_loc
     in_location_block = true;
     current_location = LocationConfig();
     size_t path_start = line.find_first_not_of(" ", 8);
-    size_t path_end = line.find("{", path_start);
-    if (path_end != std::string::npos)
-        path_end--;
-    current_location.setPath(line.substr(path_start, path_end - path_start + 1));
+    size_t path_end = line.find_last_not_of(" ", line.find("{") - 1);
+    if (path_end != std::string::npos && path_start != std::string::npos && path_end >= path_start)
+        current_location.setPath(line.substr(path_start, path_end - path_start + 1));
+    else
+        return;
     //std::cout << "Location block started for path: " << current_location.getPath() << std::endl;
 }
 

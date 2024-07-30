@@ -35,8 +35,7 @@ void LocationConfig::setPath(const std::string &p)
 
 void LocationConfig::setAllowMethods(const std::vector<std::string> &methods)
 {
-	if (!methods.empty())
-		allowMethods = methods;
+	allowMethods = methods;
 }
 
 void LocationConfig::addAllowMethod(const std::string &method)
@@ -56,8 +55,7 @@ void LocationConfig::setAutoIndex(const std::string &autoidx)
 
 void LocationConfig::setRoot(const std::string &rt)
 { 
-	if (!rt.empty())
-		this->root = rt; 
+	this->root = rt;
 }
 
 void LocationConfig::addCgiExtension(const std::string &ext)
@@ -88,7 +86,7 @@ std::string LocationConfig::getPath() const
 
 std::vector<std::string> LocationConfig::getAllowMethods() const
 {
-	return (this->allowMethods); 
+	return (this->allowMethods);
 }
 
 std::string LocationConfig::getIndex() const
