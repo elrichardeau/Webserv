@@ -82,7 +82,6 @@ void ServerManager::handleClientSocket(epoll_event event) {
 		close(event.data.fd);
 	else {
 		Requests req(buffer, this->_servers[index]);
-		// std::cout  << "PATH FOR PY = " << "." << req.getCgiPathPy() << "." << std::endl;
 		std::string response = req.getResponse();
 		send(event.data.fd, response.c_str(), response.size(), 0);
 		close(event.data.fd);
