@@ -3,7 +3,6 @@ CXXFLAGS = -Wall -Wextra -Werror -MMD -std=c++98
 
 SOURCES = main.cpp \
 		  Config.cpp \
-		  ErrorPageConfig.cpp \
 		  LocationConfig.cpp \
 		  ServerConfig.cpp \
 		  Requests.cpp \

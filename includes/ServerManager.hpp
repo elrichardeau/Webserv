@@ -21,11 +21,13 @@ class ServerManager {
 		void handleServerSocket(int epollFd, int index);
 		int compareClientSocket(int eventFd);
 		void handleClientSocket(epoll_event event);
+
 		std::vector<Server> getServers() const;
 
 	private :
 
 		std::vector<Server> _servers;
+	
 
 		class SocketFailed : public std::exception {
 			const char* what() const throw();

@@ -44,6 +44,7 @@ class Requests {
 		int _statusCode;
 		std::string _method;
 		std::string _path;
+		std::string _query;
 		std::string _protocol;
 		std::vector<std::string> _accept;
 		std::string _contentType;
