@@ -1,6 +1,6 @@
 
 #include <unistd.h>
-#include <sys/epoll.h>
+//#include <sys/epoll.h>
 #include <arpa/inet.h>
 #include "../includes/ServerManager.hpp"
 #include "../includes/Requests.hpp"
@@ -8,6 +8,7 @@
 #define MAX_EVENTS 10
 #define BUF_SIZE 1024
 
+/*
 ServerManager::ServerManager(std::vector<ServerConfig> servers) {
 	for (size_t i = 0; i < servers.size(); i++)
 		for (size_t j = 0; j < servers[i].getPorts().size(); j++)
@@ -76,3 +77,5 @@ void ServerManager::handleClientSocket(epoll_event event) {
 
 std::vector<Server> ServerManager::getServers() const {return this->_servers;}
 const char* ServerManager::SocketFailed::what() const throw() {return "Error: Socket Failed !";}
+
+*/

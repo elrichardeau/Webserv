@@ -1,6 +1,8 @@
 #pragma once
 
 #include <iostream>
+#include <iterator>
+#include <algorithm>
 #include <vector>
 #include <cstring>
 #include <cstdlib>
@@ -10,7 +12,6 @@
 #include <stdexcept>
 #include <set>
 #include "LocationConfig.hpp"
-#include "ErrorPageConfig.hpp"
 #include "ServerConfig.hpp"
 
 class Config 
@@ -18,13 +19,23 @@ class Config
 	public:
 		Config(const std::string &filename);
 		~Config();
-
-
-		bool isUniqueServer(const ServerConfig &newServer);
-		void addServer(const ServerConfig &server);
 		std::vector<ServerConfig> getServers() const;
-		static std::vector<std::string> split(const std::string &str, char delimiter);
 		void readConfig(const std::string &filename);
+
+	
+	private:
+		std::vector<ServerConfig> servers;
+		std::vector<int> usedPorts;
+
+		void addServer(const ServerConfig &server);
+		bool isUniqueServer(const ServerConfig &newServer);
+		void inBlocks(bool &in_location_block, bool &in_server_block, bool &in_error_page_block, ServerConfig &current_server, LocationConfig &current_location);
+
+		static void configLocation(bool &in_location_block, LocationConfig &current_location, std::string line);
+		static void checkLine(std::vector <std::string> validDirectives, std::vector<std::string> tokens, std::string line);
+		static void handleReturn(std::vector<std::string> &tokens, LocationConfig &current_location);
+
+		static std::vector<std::string> split(const std::string &str, char delimiter);
 		static void location(std::vector<std::string> &tokens, LocationConfig &current_location);
 		static void server(std::vector<std::string> &tokens, ServerConfig &current_server);
 		static void errorPage(std::vector<std::string> &tokens, ServerConfig &current_server);
@@ -35,21 +46,14 @@ class Config
 		static void cgiExtensions(std::vector<std::string> &tokens, LocationConfig &current_location);
 		static void cgiPaths(std::vector<std::string> &tokens, LocationConfig &current_location);
 		static void uploadDir(std::vector<std::string> &tokens, LocationConfig &current_location);
-		static void autoIndex(std::vector<std::string> &tokens, LocationConfig &current_location);
+		static bool autoIndex(std::vector<std::string> &tokens, LocationConfig &current_location);
 
 		static void listen(std::vector<std::string> &tokens, ServerConfig &current_server);
 		static void host(std::vector<std::string> &tokens, ServerConfig &current_server);
 		static void serverName(std::vector<std::string> &tokens, ServerConfig &current_server);
 		static void body(std::vector<std::string> &tokens, ServerConfig &current_server);
 		static void root(std::vector<std::string> &tokens, ServerConfig &current_server);
-
-		void inBlocks(bool &in_location_block, bool &in_server_block, bool &in_error_page_block, ServerConfig &current_server, LocationConfig &current_location);
-		static void configLocation(bool &in_location_block, LocationConfig &current_location, std::string line);
-		static void checkLine(std::vector <std::string> validDirectives, std::vector<std::string> tokens, std::string line);
-		static void handleReturn(std::vector<std::string> &tokens, LocationConfig &current_location);
-	
-	private:
-		std::vector<ServerConfig> servers;
+		static void finalizeLocation(LocationConfig &current_location);
 
 	class InvalidConfig : public std::exception
 	{
