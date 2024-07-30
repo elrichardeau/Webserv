@@ -36,6 +36,5 @@ class Server {
         int _clientMaxBodySize;
         std::string _root;
         std::vector<LocationConfig> _locations;
-        std::map<int, std::string> _errorPages;
-        // ErrorPage _errorPages;
+        ErrorPage _errorPages;
 };

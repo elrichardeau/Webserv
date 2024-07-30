@@ -26,9 +26,8 @@ int main(int argc, char **argv) {
     try {
         Config config(filename);
         std::cout << "Servers loaded: " << config.getServers().size() << std::endl;
-        //ServerManager manager(config.getServers());
-        //std::cout << "True Servers loaded: " << manager.getServers().size() << std::endl;
-        /*
+        ServerManager manager(config.getServers());
+        std::cout << "True Servers loaded: " << manager.getServers().size() << std::endl;
         manager.createSockets();
         int epollFd = epoll_create1(0);
         if (epollFd == -1) {
@@ -51,7 +50,6 @@ int main(int argc, char **argv) {
                     manager.handleClientSocket(events[i]);
             }
         }
-        */
     }
     catch (const std::exception &e) {
         std::cerr << e.what() << std::endl;

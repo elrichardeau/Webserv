@@ -8,14 +8,8 @@ Server::Server(ServerConfig serverConfig, int port) :   _serverSocket(-1),
                                                         _clientSockets(0),
                                                         _clientMaxBodySize(serverConfig.getClientMaxBodySize()),
                                                         _root(serverConfig.getRoot()),
-                                                        _locations(serverConfig.getLocations()) {
-    // remove
-        std::vector<ErrorPageConfig> errorPageConfig = serverConfig.getErrorPages();
-        for (size_t i = 0; i < errorPageConfig.size(); i++) {
-            std::map<int, std::string> mapError = errorPageConfig[i].getErrorPages();
-            this->_errorPages.insert(mapError.begin(), mapError.end());
-        }
-    // _errorPages(ErrorPage(serverConfig.getErrorPages()))
+                                                        _locations(serverConfig.getLocations()),
+                                                        _errorPages(ErrorPage(serverConfig.getErrorPages())) {
     this->_address.sin_family = AF_INET;
     this->_address.sin_addr.s_addr = inet_addr(this->_host.c_str());
     this->_address.sin_port = htons(port);
