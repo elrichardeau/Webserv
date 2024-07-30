@@ -34,7 +34,7 @@ void ServerManager::createSockets() {
 
 void ServerManager::controlSockets(int epollFd) {
 	struct epoll_event event;
-	event.events = EPOLLIN;
+	event.events = EPOLLIN | EPOLLHUP;
 	for (size_t i = 0; i < this->_servers.size(); i++) {
 		event.data.fd = this->_servers[i].getServerSocket();
 		if (epoll_ctl(epollFd, EPOLL_CTL_ADD, this->_servers[i].getServerSocket(), &event) == -1)
@@ -77,14 +77,21 @@ int ServerManager::compareClientSocket(int eventFd) {
 void ServerManager::handleClientSocket(epoll_event event) {
 	char buffer[BUF_SIZE] = {0};
 	int index = compareClientSocket(event.data.fd);
-	std::cout << "index : " << index << std::endl;
-	if(recv(event.data.fd, buffer, BUF_SIZE, 0) <= 0)
+
+	if (event.events & EPOLLHUP) {
 		close(event.data.fd);
-	else {
-		Requests req(buffer, this->_servers[index]);
-		std::string response = req.getResponse();
-		send(event.data.fd, response.c_str(), response.size(), 0);
-		close(event.data.fd);
+		return ;
+	}
+	else if (event.events & EPOLLIN)
+	{
+		std::cout << "index : " << index << std::endl;
+		if(recv(event.data.fd, buffer, BUF_SIZE, 0) <= 0)
+			close(event.data.fd);
+		else {
+			Requests req(buffer, this->_servers[index]);
+			std::string response = req.getResponse();
+			send(event.data.fd, response.c_str(), response.size(), 0);
+		}
 	}
 }
 
