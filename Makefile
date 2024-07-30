@@ -34,7 +34,7 @@ $(DIR)%.o : $(SRC)%.cpp | $(DIR)
 $(DIR) :
 	@echo "Start Compilation for $(NAME)"
 	@echo "Wait ..."
-	@mkdir -p objs_deps
+	@mkdir -p $(DIR)
 
 clean :
 	@echo "Deleting Objects and Dependencies"

@@ -22,19 +22,22 @@ bool commonPorts(const std::vector<int> &ports1, const std::vector<int> &ports2)
     return (!commonPorts.empty());
 }
 
+
 bool Config::isUniqueServer(const ServerConfig &newServer)
 {
     for (std::vector<ServerConfig>::const_iterator it = servers.begin(); it != servers.end(); ++it) 
     {
-        if (it->getServerName() == newServer.getServerName() &&
-            it->getHost() == newServer.getHost() &&
-            commonPorts(it->getPorts(), newServer.getPorts()))
+        bool sameHost = (it->getHost() == newServer.getHost() || newServer.getHost() == "0.0.0.0" || it->getHost() == "0.0.0.0");
+        bool samePorts = commonPorts(it->getPorts(), newServer.getPorts());
+        if (samePorts && sameHost)
         {
-            return (false);
+            if (newServer.getServerName() == it->getServerName())
+                return (false); 
         }
     }
     return (true);
 }
+
 void Config::addServer(const ServerConfig &server) 
 { 
     if (!isUniqueServer(server))
