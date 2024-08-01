@@ -68,6 +68,15 @@ void Requests::getQuery() {
 	}
 }
 
+void Requests::getFavicon() {
+	size_t find = this->_path.find_last_of("/");
+	if (find == std::string::npos)
+		return;
+	std::string tmp = this->_path.substr(find, this->_path.size());
+	if (tmp == "/favicon.ico")
+		this->_path = "./pages/favicon.ico";
+}
+
 Requests::Requests(const std::string &buf, const Server &servParam) : _servParam(servParam) {
 	std::vector<std::string> bufSplitted = split(buf, "\n");
 	if (!isSyntaxGood(bufSplitted))
@@ -80,13 +89,17 @@ Requests::Requests(const std::string &buf, const Server &servParam) : _servParam
 		request.insert(std::make_pair("Protocol", methodPathProtocol[2]));
 		for (size_t i = 1; i < bufSplitted.size() - 1; i++)
 			request.insert(std::make_pair(bufSplitted[i].substr(0, bufSplitted[i].find(": ")), bufSplitted[i].substr(bufSplitted[i].find(": ") + 2, bufSplitted[i].size())));
-		this->_statusCode = OK;
 		this->_method = request["Method"];
 		this->_path = "." + request["Path"];
+		getFavicon();
 		this->_protocol = request["Protocol"];
 		this->_accept = getAccept(request["Accept"]);
 		getQuery();
 		setCgiPathPy(extractCgiPathPy());
+		if (this->_protocol != "HTTP/1.1")
+			this->_statusCode = HTTP_VERSION_NOT_SUPPORTED;
+		else
+			this->_statusCode = OK;
 		setCgiPathPhp(extractCgiPathPhp());
 	}
 }
@@ -94,7 +107,7 @@ Requests::Requests(const std::string &buf, const Server &servParam) : _servParam
 Requests::~Requests() {}
 
 bool Requests::checkExtension() {
-	if (this->_path == "./favicon.ico") {
+	if (this->_path == "./pages/favicon.ico") {
 		this->_contentType = "image/x-icon";
 		return true;
 	}
@@ -121,7 +134,6 @@ bool Requests::checkExtension() {
 
 void Requests::checkPage() {
 	DIR *dir = opendir(this->_path.c_str());
-
 	if (dir != NULL) {
 		closedir(dir);
 		std::string slash = "";
@@ -165,7 +177,6 @@ std::string readFromPipe(int pipeFd)
 	}
 	return (result);
 }
-
 
 char **Requests::vectorToCharArray(const std::vector<std::string> &vector)
 {
@@ -286,7 +297,6 @@ std::string  Requests::execCgi(const std::string& scriptType)
 }
 
 std::string Requests::getResponse() {
-	chdir("./pages");
 	if (this->_statusCode == OK)
 		checkPage();
 	if (this->_statusCode == OK) {
@@ -300,70 +310,26 @@ std::string Requests::getResponse() {
 				return getPage("error/403.html", "HTTP/1.1 403 Forbidden");
 			return (execCgi(words[nb_words - 1]));
 		}
-		return getPage(this->_path, setResponse());
+		return getPage(this->_path, setResponse("OK"));
 	}
-	return getErrorPage();
+	return setErrorPage();
 }
 
-std::string Requests::getErrorPage() {
-	this->_protocol = "HTTP/1.1";
-	this->_contentType = "text/html";
-	switch (this->_statusCode) {
-		case BAD_REQUEST:
-			this->_path = "./error/400.html";
-			break;
-		case FORBIDDEN:
-			this->_path = "./error/403.html";
-			break;
-		case NOT_FOUND:
-			this->_path = "./error/404.html";
-			break;
-		case METHOD_NOT_ALLOWED:
-			this->_path = "./error/405.html";
-			break;
-		case NOT_ACCEPTABLE:
-			this->_path = "./error/406.html";
-			break;
-		case HTTP_VERSION_NOT_SUPPORTED:
-			this->_path = "./error/505.html";
-			break;
-		case INTERNAL_SERVER_ERROR:
-			this->_path = "./error/500.html";
-			break;
-	}
-	return getPage(this->_path, setResponse());
+std::string Requests::setErrorPage() {
+	ErrorPage err = this->_servParam.getErrorPage();
+	this->_protocol = err.getProtocol();
+	this->_contentType = err.getContentType();
+	this->_path = err.getPath(this->_statusCode);
+	return getPage(this->_path, setResponse(err.getErrorMessage(this->_statusCode)));
 }
 
-std::string getErrorName(int error) {
-	switch (error) {
-		case OK:
-			return "OK";
-		case BAD_REQUEST:
-			return "Bad Request";
-		case FORBIDDEN:
-			return "Forbidden";
-		case NOT_FOUND:
-			return "Not Found";
-		case METHOD_NOT_ALLOWED:
-			return "Method Not Allowed";
-		case NOT_ACCEPTABLE:
-			return "Not Acceptable";
-		case INTERNAL_SERVER_ERROR:
-			return "Internal Server Error";
-		case HTTP_VERSION_NOT_SUPPORTED:
-			return "Version not supported";
-		default:
-			return "Internal Server Error"; 
-	}
-}
-
-std::string Requests::setResponse() {
+std::string Requests::setResponse(const std::string &codeName) {
 	std::string response;
 	struct stat buf;
 	int st = stat(this->_path.c_str(), &buf);
-	response.append(this->_protocol + " " + itostr(this->_statusCode) + " " + getErrorName(this->_statusCode) + "\n");
+	response.append(this->_protocol + " " + itostr(this->_statusCode) + " " + codeName + "\n");
 	response.append("Connection: Keep-Alive\n");
-	if (st != 1) {
+	if (st != -1) {
 		size_t bytes = buf.st_size;
 		response.append("Content-Length: ");
 		response.append(itostr(bytes));
@@ -371,7 +337,7 @@ std::string Requests::setResponse() {
 	}
 	response.append("Content-Location: " + this->_path.substr(1, this->_path.size()) + "\n");
 	response.append("Content-Type: " + this->_contentType + "\n");
-	if (st != 1) {
+	if (st != -1) {
 		response.append("Date: ");
 		response.append(ctime(&buf.st_atime));
 		response.append("Last-Modified: ");
@@ -381,7 +347,6 @@ std::string Requests::setResponse() {
 	response.append("\n");
 	return response;
 }
-
 
 std::string Requests::extractCgiPathPy() const {
 	std::vector<LocationConfig> locations = this->_servParam.getLocations();

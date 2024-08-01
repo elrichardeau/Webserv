@@ -9,23 +9,23 @@ void createVector(std::vector<std::string> &tmp, const std::string &path, const 
 
 ErrorPage::ErrorPage(std::map<int, std::string> errorPages) : _protocol("HTTP/1.1"), _contentType("text/html") {
 	std::vector<std::string> tmp;
-	createVector(tmp, "./error/400.html", "Bad Request");
+	createVector(tmp, "./pages/error/400.html", "Bad Request");
 	this->_errorPage.insert(std::make_pair(400, tmp));
-	createVector(tmp, "./error/403.html", "Forbidden");
+	createVector(tmp, "./pages/error/403.html", "Forbidden");
 	this->_errorPage.insert(std::make_pair(403, tmp));
-	createVector(tmp, "./error/404.html", "Not found");
+	createVector(tmp, "./pages/error/404.html", "Not found");
 	this->_errorPage.insert(std::make_pair(404, tmp));
-	createVector(tmp, "./error/405.html", "Method Not Allowed");
+	createVector(tmp, "./pages/error/405.html", "Method Not Allowed");
 	this->_errorPage.insert(std::make_pair(405, tmp));
-	createVector(tmp, "./error/406.html", "Not Acceptable");
+	createVector(tmp, "./pages/error/406.html", "Not Acceptable");
 	this->_errorPage.insert(std::make_pair(406, tmp));
-	createVector(tmp, "./error/500.html", "Internal Server Error");
+	createVector(tmp, "./pages/error/500.html", "Internal Server Error");
 	this->_errorPage.insert(std::make_pair(500, tmp));
-	createVector(tmp, "./error/505.html", "Version not supported");
+	createVector(tmp, "./pages/error/505.html", "Version not supported");
 	this->_errorPage.insert(std::make_pair(505, tmp));
 	for (MapIterator it = errorPages.begin(); it != errorPages.end(); it++) {
-		if (!access(it->second.c_str(), F_OK | R_OK)) {
-			setNewPath(it->first, it->second);
+		if (!access(("." + it->second).c_str(), F_OK | R_OK)) {
+			setNewPath(it->first, ("." + it->second));
 		}
 	}
 }

@@ -26,6 +26,7 @@ class Server {
         std::vector<int> getClientSockets() const;
         void rmClientSocket(int index);
         std::vector<LocationConfig> getLocations() const;
+        ErrorPage getErrorPage() const;
 
     private :
 

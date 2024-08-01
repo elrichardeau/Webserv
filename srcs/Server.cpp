@@ -31,3 +31,4 @@ void Server::addClientSocket(int clientSocket) {this->_clientSockets.push_back(c
 std::vector<int> Server::getClientSockets() const {return this->_clientSockets;}
 void Server::rmClientSocket(int index) {this->_clientSockets.erase(this->_clientSockets.begin() + index);}
 std::vector<LocationConfig> Server::getLocations() const {return this->_locations;}
+ErrorPage Server::getErrorPage() const {return this->_errorPages;}
