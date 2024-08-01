@@ -68,6 +68,15 @@ void Requests::getQuery() {
 	}
 }
 
+void Requests::getFavicon() {
+	size_t find = this->_path.find_last_of("/");
+	if (find == std::string::npos)
+		return;
+	std::string tmp = this->_path.substr(find, this->_path.size());
+	if (tmp == "/favicon.ico")
+		this->_path = "./pages/favicon.ico";
+}
+
 Requests::Requests(const std::string &buf, const Server &servParam) : _servParam(servParam) {
 	std::vector<std::string> bufSplitted = split(buf, "\n");
 	if (!isSyntaxGood(bufSplitted))
@@ -82,6 +91,7 @@ Requests::Requests(const std::string &buf, const Server &servParam) : _servParam
 			request.insert(std::make_pair(bufSplitted[i].substr(0, bufSplitted[i].find(": ")), bufSplitted[i].substr(bufSplitted[i].find(": ") + 2, bufSplitted[i].size())));
 		this->_method = request["Method"];
 		this->_path = "." + request["Path"];
+		getFavicon();
 		this->_protocol = request["Protocol"];
 		this->_accept = getAccept(request["Accept"]);
 		getQuery();
@@ -96,7 +106,7 @@ Requests::Requests(const std::string &buf, const Server &servParam) : _servParam
 Requests::~Requests() {}
 
 bool Requests::checkExtension() {
-	if (this->_path == "./favicon.ico") {
+	if (this->_path == "./pages/favicon.ico") {
 		this->_contentType = "image/x-icon";
 		return true;
 	}
@@ -336,7 +346,6 @@ std::string Requests::setResponse(const std::string &codeName) {
 	response.append("\n");
 	return response;
 }
-
 
 std::string Requests::extractCgiPathPy() const {
 	std::vector<LocationConfig> locations = this->_servParam.getLocations();

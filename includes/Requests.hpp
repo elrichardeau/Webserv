@@ -50,6 +50,7 @@ class Requests {
 
 		void getQuery();
 		void checkPage();
+		void getFavicon();
 		bool checkExtension();
 		std::string setErrorPage();
 		std::string setResponse(const std::string &codeName);
