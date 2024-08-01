@@ -5,13 +5,13 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <unistd.h>
-//#include <sys/epoll.h>
+#include <sys/epoll.h>
 #include <sstream>
 #include <arpa/inet.h>
 #include "../includes/Config.hpp"
 #include "../includes/Requests.hpp"
 #include "../includes/Server.hpp"
-//#include "../includes/ServerManager.hpp"
+#include "../includes/ServerManager.hpp"
 
 #define MAX_EVENTS 10
 
@@ -26,7 +26,6 @@ int main(int argc, char **argv) {
     try {
         Config config(filename);
         std::cout << "Servers loaded: " << config.getServers().size() << std::endl;
-        /*
         ServerManager manager(config.getServers());
         std::cout << "True Servers loaded: " << manager.getServers().size() << std::endl;
         manager.createSockets();
@@ -51,7 +50,6 @@ int main(int argc, char **argv) {
                     manager.handleClientSocket(events[i]);
             }
         }
-        */
     }
     catch (const std::exception &e) {
         std::cerr << e.what() << std::endl;

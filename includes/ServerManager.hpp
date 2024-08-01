@@ -3,7 +3,7 @@
 #include <unistd.h>
 #include <vector>
 #include <stdexcept>
-//#include <sys/epoll.h>
+#include <sys/epoll.h>
 #include <arpa/inet.h>
 #include "Server.hpp"
 #include "Requests.hpp"
@@ -20,7 +20,7 @@ class ServerManager {
 		int compareServerSocket(int eventFd);
 		void handleServerSocket(int epollFd, int index);
 		int compareClientSocket(int eventFd);
-		//void handleClientSocket(epoll_event event);
+		void handleClientSocket(epoll_event event);
 
 		std::vector<Server> getServers() const;
 
