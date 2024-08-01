@@ -79,12 +79,16 @@ void ServerManager::handleServerSocket(int epollFd, int index) {
 		throw SocketFailed();
 }
 
-int ServerManager::compareClientSocket(int eventFd) {
+int ServerManager::compareClientSocket(int eventFd, bool forClose) {
 	for (size_t i = 0; i < this->_servers.size(); i++) {
 		std::vector<int> clientSockets = this->_servers[i].getClientSockets();
 		for (size_t j = 0; j < clientSockets.size(); j++) {
 			if (eventFd == clientSockets[j]) {
-				this->_servers[i].rmClientSocket(j);
+				if (forClose) {
+					this->_servers[i].rmClientSocket(j);
+					close(eventFd);
+					return -1;
+				}
 				return i;
 			}
 		}
@@ -94,8 +98,7 @@ int ServerManager::compareClientSocket(int eventFd) {
 
 void ServerManager::handleClientSocket(epoll_event event) {
 	char buffer[BUF_SIZE] = {0};
-	int index = compareClientSocket(event.data.fd);
-
+	int index = compareClientSocket(event.data.fd, 0);
 	if (event.events & EPOLLHUP) {
 		close(event.data.fd);
 		return ;
@@ -104,7 +107,7 @@ void ServerManager::handleClientSocket(epoll_event event) {
 	{
 		std::cout << "index : " << index << std::endl;
 		if(recv(event.data.fd, buffer, BUF_SIZE, 0) <= 0)
-			close(event.data.fd);
+			compareClientSocket(event.data.fd, 1);
 		else {
 			std::cout << buffer << std::endl;
 			Requests req(buffer, this->_servers[index]);

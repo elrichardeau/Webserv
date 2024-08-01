@@ -55,13 +55,15 @@ class Requests {
 		std::string setErrorPage();
 		std::string setResponse(const std::string &codeName);
 
-		std::string getCgiPathPy() const;
 		std::string execCgi(const std::string& scriptType);
 		char** vectorToCharArray(const std::vector<std::string> &vector);
 	    std::vector<std::string> createCgiEnv();
+		std::string getCgiPathPy() const;
 		std::string extractCgiPathPy() const;
 		void setCgiPathPy(const std::string &path);
+		std::string getCgiPathPhp() const;
+		std::string extractCgiPathPhp() const;
+		void setCgiPathPhp(const std::string &path);
 };
 
 std::string itostr(int nb);
-
