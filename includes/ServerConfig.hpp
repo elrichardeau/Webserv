@@ -45,5 +45,5 @@ private:
     std::string root;
     std::vector<int> ports;
     std::vector<LocationConfig> locations;
-    std::map<int, std::string> error_pages; 
+    std::map<int, std::string> error_pages;
 };

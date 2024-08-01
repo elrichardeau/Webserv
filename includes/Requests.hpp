@@ -44,6 +44,10 @@ class Requests {
 		void setCgiPathPy(const std::string &path);
 		std::string getCgiPathPy() const;
 
+		std::string extractCgiPathPhp() const;
+		void setCgiPathPhp(const std::string &path);
+		std::string getCgiPathPhp() const;
+
 	private :
 
 		int _statusCode;
@@ -61,3 +65,5 @@ class Requests {
 		std::string _cgiPathPy;
 		std::string _cgiPathPhp;
 };
+
+std::string itostr(int nb);
