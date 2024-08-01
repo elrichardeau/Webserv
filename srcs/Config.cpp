@@ -1,10 +1,12 @@
 #include "../includes/Config.hpp"
 
-Config::Config(const std::string &filename)
+Config::Config(const std::string &filename) 
+: inServerBlock(false), inLocationBlock(false), inErrorPageBlock(false), hasReadData(false)
 {
     readConfig(filename);
 }
 Config::~Config(){}
+
 
 bool commonPorts(const std::vector<int> &ports1, const std::vector<int> &ports2)
 {
@@ -26,19 +28,21 @@ bool Config::isUniqueServer(const ServerConfig &newServer)
 {
     for (std::vector<ServerConfig>::const_iterator it = servers.begin(); it != servers.end(); ++it) 
     {
-        if (it->getServerName() == newServer.getServerName() &&
-            it->getHost() == newServer.getHost() &&
-            commonPorts(it->getPorts(), newServer.getPorts()))
+        bool sameHost = (it->getHost() == newServer.getHost() || newServer.getHost() == "0.0.0.0" || it->getHost() == "0.0.0.0");
+        bool samePorts = commonPorts(it->getPorts(), newServer.getPorts());
+        if (samePorts && sameHost)
         {
-            return (false);
+            if (newServer.getServerName() == it->getServerName())
+                return (false); 
         }
     }
     return (true);
 }
+
 void Config::addServer(const ServerConfig &server) 
 { 
     if (!isUniqueServer(server))
-       throw InvalidConfig("Duplicate server configuration detected.");
+        throw InvalidConfig("Duplicate server configuration detected.");
     servers.push_back(server);
     std::cout << "Server added. Total servers: " << servers.size() << std::endl;
 }
@@ -85,32 +89,48 @@ bool isValidIPAddress(const std::string &ip)
     return (false);
 }
 
-void Config::allowMethods(std::vector<std::string> &tokens, LocationConfig &current_location)
+void Config::allowMethods(std::vector<std::string> &tokens, LocationConfig &currentLocation)
 {
+    std::vector<std::string> validMethods;
+    validMethods.push_back("GET");
+    validMethods.push_back("POST");
+    validMethods.push_back("DELETE");
+    validMethods.push_back("PUT");
+    validMethods.push_back("HEAD");
+    validMethods.push_back("OPTIONS");
+    validMethods.push_back("PATCH");
+    validMethods.push_back("CONNECT");
+    validMethods.push_back("TRACE");
     if (tokens[0] == "allow_methods")
     {
         if (tokens.size() < 2)
             throw InvalidConfig("Error: no specified allow methods.");
         for (size_t i = 1; i < tokens.size(); ++i)
         {
-            current_location.addAllowMethod(tokens[i]);
+            if (std::find(validMethods.begin(), validMethods.end(), tokens[i]) != validMethods.end())
+                currentLocation.addAllowMethod(tokens[i]);
+            else
+                throw InvalidConfig("Error: Invalid HTTP method specified.");
         }
     }
 }
         
 
-void Config::index(std::vector<std::string> &tokens, LocationConfig &current_location)
+void Config::index(std::vector<std::string> &tokens, LocationConfig &currentLocation)
 {
     if (tokens[0] == "index")
     {
         if (tokens.size() < 2)
             throw InvalidConfig("Error: No index specified.");
-        current_location.setIndex(tokens[1]);
+        const std::string &path = tokens[1];
+        if (path[0] != '/')
+            throw InvalidConfig("Error: Index path must start with '/'.");
+        currentLocation.setIndex(tokens[1]);
     }
 }
 
 
-void Config::cgiExtensions(std::vector<std::string> &tokens, LocationConfig &current_location)
+void Config::cgiExtensions(std::vector<std::string> &tokens, LocationConfig &currentLocation)
 {
     if (tokens[0] == "cgi_extension") 
     {
@@ -129,12 +149,12 @@ void Config::cgiExtensions(std::vector<std::string> &tokens, LocationConfig &cur
             if (std::find(seenExtensions.begin(), seenExtensions.end(), extension) != seenExtensions.end())
                 throw InvalidConfig("Error: Duplicate CGI extension specified.");
             seenExtensions.push_back(extension);
-            current_location.addCgiExtension(extension);
+            currentLocation.addCgiExtension(extension);
         } 
     }
 }
 
-void Config::cgiPaths(std::vector<std::string> &tokens, LocationConfig &current_location)
+void Config::cgiPaths(std::vector<std::string> &tokens, LocationConfig &currentLocation)
 {
     if (tokens[0] == "cgi_path")
     {
@@ -149,27 +169,29 @@ void Config::cgiPaths(std::vector<std::string> &tokens, LocationConfig &current_
         {
             const std::string &extension = tokens[i];
             const std::string &path = tokens[i + 1];
+            if (path[0] != '/')
+                throw InvalidConfig("Error: CGI path must start with '/'.");
             if (std::find(validExtensions.begin(), validExtensions.end(), extension) == validExtensions.end())
                 throw InvalidConfig("Error: Invalid CGI extension. Only '.php' and '.py' are allowed.");
             if (std::find(seenExtensions.begin(), seenExtensions.end(), extension) != seenExtensions.end())
                 throw InvalidConfig("Error: Each CGI extension can only have one corresponding path.");
             seenExtensions.push_back(extension);
-            current_location.addCgiPath(extension, path);
+            currentLocation.addCgiPath(extension, path);
         }
     } 
 }
 
-void Config::uploadDir(std::vector<std::string> &tokens, LocationConfig &current_location)
+void Config::uploadDir(std::vector<std::string> &tokens, LocationConfig &currentLocation)
 {
     if (tokens[0] == "upload_dir")
     {
         if (tokens.size() < 2)
             throw InvalidConfig("Error: No upload_dir specified.");
-        current_location.setUploadDir(tokens[1]);
+        currentLocation.setUploadDir(tokens[1]);
     }
 }
 
-bool Config::autoIndex(std::vector<std::string> &tokens, LocationConfig &current_location)
+bool Config::autoIndex(std::vector<std::string> &tokens, LocationConfig &currentLocation)
 {
     if (tokens[0] == "autoindex")
     {
@@ -178,12 +200,12 @@ bool Config::autoIndex(std::vector<std::string> &tokens, LocationConfig &current
         const std::string &value = tokens[1];
         if (value == "on")
         {
-            current_location.setAutoIndex(value);
+            currentLocation.setAutoIndex(value);
             return (true);
         }
         else if (value == "off")
         {
-            current_location.setAutoIndex(value);
+            currentLocation.setAutoIndex(value);
             return (false);
         }
         else 
@@ -208,35 +230,38 @@ std::vector<std::string> Config::split(const std::string &str, char delimiter)
     }
     return (tokens);
 }
-void Config::root(std::vector<std::string> &tokens, LocationConfig &current_location)
+void Config::root(std::vector<std::string> &tokens, LocationConfig &currentLocation)
 {
     if (tokens[0] == "root")
     {
         if (tokens.size() < 2)
             throw InvalidConfig("Error: No root specified.");
-        current_location.setRoot(tokens[1]);
+        const std::string &path = tokens[1];
+        if (path[0] != '/')
+            throw InvalidConfig("Error: Root path must start with '/'.");
+        currentLocation.setRoot(tokens[1]);
     }
 }
 
-void Config::location(std::vector<std::string> &tokens, LocationConfig &current_location)
+void Config::location(std::vector<std::string> &tokens, LocationConfig &currentLocation)
 {
     if (tokens[0].empty())
         return;
     if (tokens[0] == "return")
-        handleReturn(tokens, current_location);
+        handleReturn(tokens, currentLocation);
     else
     {
-        allowMethods(tokens, current_location);
-        autoIndex(tokens, current_location);
-        index(tokens, current_location);
-        root(tokens, current_location);
-        cgiExtensions(tokens, current_location);
-        cgiPaths(tokens, current_location);
-        uploadDir(tokens, current_location);
+        allowMethods(tokens, currentLocation);
+        autoIndex(tokens, currentLocation);
+        index(tokens, currentLocation);
+        root(tokens, currentLocation);
+        cgiExtensions(tokens, currentLocation);
+        cgiPaths(tokens, currentLocation);
+        uploadDir(tokens, currentLocation);
     }
 }
 
-void Config::listen(std::vector<std::string> &tokens, ServerConfig &current_server)
+void Config::listen(std::vector<std::string> &tokens, ServerConfig &currentServer)
 {
     if (tokens[0] == "listen")
     {
@@ -257,11 +282,11 @@ void Config::listen(std::vector<std::string> &tokens, ServerConfig &current_serv
         
         }  
         for (size_t i = 0; i < tempPort.size(); ++i)
-            current_server.addPort(static_cast <int> (tempPort[i]));
+            currentServer.addPort(static_cast <int> (tempPort[i]));
     }
 }
 
-void Config::host(std::vector<std::string> &tokens, ServerConfig &current_server)
+void Config::host(std::vector<std::string> &tokens, ServerConfig &currentServer)
 {
     if (tokens[0] == "host")
     {
@@ -269,21 +294,21 @@ void Config::host(std::vector<std::string> &tokens, ServerConfig &current_server
             throw InvalidConfig("Error: No host specified.");
         if (!isValidIPAddress(tokens[1]))
             throw InvalidConfig("Error: Invalid host.");
-        current_server.setHost(tokens[1]);  
+        currentServer.setHost(tokens[1]);  
     }
 }
 
-void Config::serverName(std::vector<std::string> &tokens, ServerConfig &current_server)
+void Config::serverName(std::vector<std::string> &tokens, ServerConfig &currentServer)
 {
     if (tokens[0] == "server_name")
     {
         if (tokens.size() != 2)
             throw InvalidConfig("Error: Invalid number of server_name."); 
-        current_server.setServerName(tokens[1]);
+        currentServer.setServerName(tokens[1]);
     }
 }
 
-void Config::body(std::vector<std::string> &tokens, ServerConfig &current_server)
+void Config::body(std::vector<std::string> &tokens, ServerConfig &currentServer)
 {
     if (tokens[0] == "client_max_body_size")
     {
@@ -296,67 +321,77 @@ void Config::body(std::vector<std::string> &tokens, ServerConfig &current_server
         long bodyInt = std::strtol(body.c_str(), &end, 10);
         if (*end != '\0' || bodyInt < 0 || bodyInt >= 1000000)
             throw InvalidConfig("Error: Invalid client max body size.");
-        current_server.setClientMaxBodySize(static_cast<int> (bodyInt));
+        currentServer.setClientMaxBodySize(static_cast<int> (bodyInt));
     }
 }
 
-void Config::root(std::vector<std::string> &tokens, ServerConfig &current_server)
+void Config::root(std::vector<std::string> &tokens, ServerConfig &currentServer)
 {
     if (tokens[0] == "root")
     {
         if (tokens.size() < 2)
             throw InvalidConfig("Error: No root specified.");
-        current_server.setRoot(tokens[1]);
+        const std::string &path = tokens[1];
+        if (path[0] != '/')
+            throw InvalidConfig("Error: Root path must start with '/'.");
+        currentServer.setRoot(tokens[1]);
     }
 }
 
-void Config::server(std::vector<std::string> &tokens, ServerConfig &current_server)
+void Config::server(std::vector<std::string> &tokens, ServerConfig &currentServer)
 {
-    listen(tokens, current_server);
-    host(tokens, current_server);
-    serverName(tokens, current_server);
-    body(tokens, current_server);
-    root(tokens, current_server);
+    listen(tokens, currentServer);
+    host(tokens, currentServer);
+    serverName(tokens, currentServer);
+    body(tokens, currentServer);
+    root(tokens, currentServer);
 }
 
-void Config::errorPage(std::vector<std::string> &tokens, ServerConfig &current_server)
+void Config::errorPage(std::vector<std::string> &tokens, ServerConfig &currentServer)
 {
     if (tokens.size() < 2)
         throw InvalidConfig("Error: Insufficient parameters from error page configuration.");
     int errorCode = std::atoi(tokens[0].c_str());
     const std::string &errorPath = tokens[1];
-    current_server.addErrorPage(errorCode, errorPath);
+    if (errorPath[0] != '/')
+        throw InvalidConfig("Error: Error page path must start with '/'.");
+    currentServer.addErrorPage(errorCode, errorPath);
 }
 
-void Config::inBlocks(bool &in_location_block, bool &in_server_block, bool &in_error_page_block, ServerConfig &current_server, LocationConfig &current_location)
+void Config::inBlocks(bool &inLocationBlock, bool &inServerBlock, bool &inErrorPageBlock, ServerConfig &currentServer, LocationConfig &currentLocation)
 {
-    if (in_location_block)
+    if (inLocationBlock)
     {
-        finalizeLocation(current_location);
-        current_server.addLocation(current_location);
-        in_location_block = false;
+        finalizeLocation(currentLocation);
+        currentServer.addLocation(currentLocation);
+        inLocationBlock = false;
     } 
-    else if (in_error_page_block)
-        in_error_page_block = false;
-    else if (in_server_block)
+    else if (inErrorPageBlock)
+        inErrorPageBlock = false;
+    else if (inServerBlock)
     {
-        this->addServer(current_server);
-        in_server_block = false;
+        this->addServer(currentServer);
+        inServerBlock = false;
     }
 }
 
 
-void Config::configLocation(bool &in_location_block, LocationConfig &current_location, std::string line)
+void Config::configLocation(bool &inLocationBlock, LocationConfig &currentLocation, std::string line)
 {
-    in_location_block = true;
-    current_location = LocationConfig();
-    size_t path_start = line.find_first_not_of(" ", 8);
-    size_t path_end = line.find_last_not_of(" ", line.find("{") - 1);
-    if (path_end != std::string::npos && path_start != std::string::npos && path_end >= path_start)
-        current_location.setPath(line.substr(path_start, path_end - path_start + 1));
+    inLocationBlock = true;
+    currentLocation = LocationConfig();
+    size_t pathStart = line.find_first_not_of(" ", 8);
+    size_t pathEnd = line.find_last_not_of(" ", line.find("{") - 1);
+    if (pathEnd != std::string::npos && pathStart != std::string::npos && pathEnd >= pathStart)
+    {
+        std::string path = line.substr(pathStart, pathEnd - pathStart + 1);
+        if (path[0] != '/')
+            throw InvalidConfig("Error: Location path must start with '/'.");
+        currentLocation.setPath(line.substr(pathStart, pathEnd - pathStart + 1));
+    }    
     else
-        return;
-    //std::cout << "Location block started for path: " << current_location.getPath() << std::endl;
+        throw InvalidConfig("Error: Wrong path in Location.");
+    //std::cout << "Location block started for path: " << currentLocation.getPath() << std::endl;
 }
 
 
@@ -418,7 +453,7 @@ void Config::checkLine(std::vector <std::string> validDirectives, std::vector<st
     }
 }
 
-void Config::handleReturn(std::vector<std::string> &tokens, LocationConfig &current_location)
+void Config::handleReturn(std::vector<std::string> &tokens, LocationConfig &currentLocation)
 {
     if (tokens[0] == "return")
     {
@@ -428,68 +463,90 @@ void Config::handleReturn(std::vector<std::string> &tokens, LocationConfig &curr
         long statusCode = std::strtol(tokens[1].c_str(), &end, 10);
         if ((statusCode < 300 || statusCode > 310) || *end != '\0')
             throw InvalidConfig("Error: Invalid return code.");
-        current_location.setReturnDirective(tokens[1] + " " + tokens[2]);
+        const std::string &path = tokens[2];
+        if (path[0] != '/')
+            throw InvalidConfig("Error: Return code path must start with '/'.");
+        currentLocation.setReturnDirective(tokens[1] + " " + tokens[2]);
     }
 }
 
-void Config::finalizeLocation(LocationConfig &current_location)
+void Config::finalizeLocation(LocationConfig &currentLocation)
 {
-    if (current_location.getAllowMethods().empty())
+    if (currentLocation.getAllowMethods().empty())
     {
         std::vector<std::string> defaultMethods;
         defaultMethods.push_back("GET");
         defaultMethods.push_back("HEAD");
-        current_location.setAllowMethods(defaultMethods);
+        currentLocation.setAllowMethods(defaultMethods);
     }
-    if (current_location.getRoot().empty())
-        current_location.setRoot("./");
+    if (currentLocation.getRoot().empty())
+        currentLocation.setRoot("/");
+}
+
+void Config::processLine(ServerConfig &currentServer, LocationConfig &currentLocation)
+{
+    if (line == "server {")
+    {
+        if (inServerBlock)
+            throw InvalidConfig("Error: 'server' block is incorrectly configured.");
+        inServerBlock = true;
+        currentServer = ServerConfig();
+    }
+    else if (line == "}")
+    {
+        if (inServerBlock && !currentServer.isValid())
+            throw InvalidConfig("Error: Missing required directives (root, host, or listen).");
+        if (!inServerBlock && !inLocationBlock && !inErrorPageBlock)
+            throw InvalidConfig("Error: Wrong configuration.");
+        inBlocks(inLocationBlock, inServerBlock, inErrorPageBlock, currentServer, currentLocation);
+    }
+    else if (line.find("location") == 0 && line[line.length() - 1] == '{')
+    {
+        if (!inServerBlock || inLocationBlock || inErrorPageBlock)
+            throw InvalidConfig("Error: A block is not closed.");
+        configLocation(inLocationBlock, currentLocation, line);
+    }
+    else if (line == "error_page {")
+    {
+        if (!inServerBlock || inLocationBlock || inErrorPageBlock)
+            throw InvalidConfig("Error: A block is not closed.");
+        inErrorPageBlock = true;
+    }
+    else if (inServerBlock && !inLocationBlock && !inErrorPageBlock)
+        server(tokens, currentServer);
+    else if (inLocationBlock)
+        location(tokens, currentLocation);
+    else if (inErrorPageBlock)
+        errorPage(tokens, currentServer);
+    else
+        throw InvalidConfig("Error: Invalid line.");   
 }
 
 void Config::readConfig(const std::string &filename)
 {
+    if (access(filename.c_str(), R_OK) == -1)
+        throw InvalidConfig("Error: Access denied or file does not exist.");
     std::ifstream file(filename.c_str());
     if (!file.is_open())
         throw InvalidConfig("Error: couldn't open file.");
-    std::string line;
-    ServerConfig current_server;
-    LocationConfig current_location;
-    bool in_server_block = false;
-    bool in_location_block = false;
-	bool in_error_page_block = false;
-    std::vector <std::string> validDirectives;
-	std::vector<std::string> tokens;
+    ServerConfig currentServer;
+    LocationConfig currentLocation;
     while (std::getline(file, line))
     {
+        hasReadData = true;
         tokens = Config::split(line, ' ');
         line.erase(0, line.find_first_not_of(" \t\n\r"));
         line.erase(line.find_last_not_of(" \t\n\r") + 1);
         if (line.empty())
             continue;
         checkLine(validDirectives, tokens, line);
-        if (line == "server {")
-        {
-            in_server_block = true;
-            current_server = ServerConfig();
-        }
-        else if (line == "}")
-        {
-            if (in_server_block && !current_server.isValid())
-                throw InvalidConfig("Error: Missing required directives (root, host, or listen).");
-            inBlocks(in_location_block, in_server_block, in_error_page_block, current_server, current_location);
-        }
-        else if (line.find("location") == 0 && line[line.length() - 1] == '{')
-            configLocation(in_location_block, current_location, line);
-        else if (line == "error_page {")
-            in_error_page_block = true;
-        else if (in_server_block && !in_location_block && !in_error_page_block)
-            server(tokens, current_server);
-        else if (in_location_block)
-            location(tokens, current_location);
-        else if (in_error_page_block)
-            errorPage(tokens, current_server);
-        else
-            throw InvalidConfig("Error: Invalid line.");
+        processLine(currentServer, currentLocation);
     }
+    file.close();
+    if (!hasReadData)
+        throw InvalidConfig("Error: Wrong configuration file.");
 }
+
+
 
 
