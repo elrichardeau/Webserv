@@ -2,6 +2,7 @@
 #include "../includes/Server.hpp"
 
 Server::Server(ServerConfig serverConfig, int port) :   _serverSocket(-1),
+                                                        _isDup(false),
                                                         _port(port),
                                                         _host(serverConfig.getHost()),
                                                         _serverName(serverConfig.getServerName()),
@@ -23,8 +24,11 @@ std::string Server::getHost() const {return this->_host;}
 int Server::getPort() const {return this->_port;}
 std::string Server::getServerName() const {return this->_serverName;}
 void Server::setServerSocket(int serverSocket) {this->_serverSocket = serverSocket;}
+void Server::setIsDup(bool status) {this->_isDup = status;}
 int Server::getServerSocket() const {return this->_serverSocket;}
+bool Server::getIsDup() const {return this->_isDup;}
 void Server::addClientSocket(int clientSocket) {this->_clientSockets.push_back(clientSocket);}
 std::vector<int> Server::getClientSockets() const {return this->_clientSockets;}
 void Server::rmClientSocket(int index) {this->_clientSockets.erase(this->_clientSockets.begin() + index);}
 std::vector<LocationConfig> Server::getLocations() const {return this->_locations;}
+ErrorPage Server::getErrorPage() const {return this->_errorPages;}

@@ -2,6 +2,7 @@
 
 #include <unistd.h>
 #include <vector>
+#include <map>
 #include <stdexcept>
 #include <sys/epoll.h>
 #include <arpa/inet.h>
