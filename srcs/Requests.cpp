@@ -100,6 +100,7 @@ Requests::Requests(const std::string &buf, const Server &servParam) : _servParam
 			this->_statusCode = HTTP_VERSION_NOT_SUPPORTED;
 		else
 			this->_statusCode = OK;
+		setCgiPathPhp(extractCgiPathPhp());
 	}
 }
 
@@ -263,7 +264,7 @@ std::string  Requests::execCgi(const std::string& scriptType)
 		if (!scriptType.compare("py"))
 			scriptInterpreter = this->_cgiPathPy.c_str();
 		else
-			scriptInterpreter = "/usr/bin/php";
+			scriptInterpreter = this->_cgiPathPhp.c_str();
 		
 		char **env = vectorToCharArray(createCgiEnv());
 		for (int i = 0; i < 5; i++)
@@ -363,3 +364,19 @@ std::string Requests::extractCgiPathPy() const {
 
 void Requests::setCgiPathPy(const std::string &path) {this->_cgiPathPy = path;}
 std::string Requests::getCgiPathPy() const {return this->_cgiPathPy;}
+
+std::string Requests::extractCgiPathPhp() const {
+	std::vector<LocationConfig> locations = this->_servParam.getLocations();
+	std::string cgiPath;
+
+	for (size_t i = 0; i < locations.size(); i++) {
+		if (locations[i].getPath() == "/cgi-bin") {
+			 std::map<std::string, std::string> cgiPaths = locations[i].getCgiPaths();
+			 std::map<std::string, std::string>::iterator it = cgiPaths.find(".php");
+            cgiPath = it->second;
+			}
+		}
+	return cgiPath;
+}
+void Requests::setCgiPathPhp(const std::string &path) {this->_cgiPathPhp = path;}
+std::string Requests::getCgiPathPhp() const {return this->_cgiPathPhp;}

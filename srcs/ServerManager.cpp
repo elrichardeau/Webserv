@@ -18,24 +18,41 @@ ServerManager::~ServerManager() {
 }
 
 void ServerManager::createSockets() {
+	std::map<std::string, int> checkIpPort;
+	std::string ipPort;
+
 	for (size_t i = 0; i < this->_servers.size(); i++) {
 		int opt = 1;
+		ipPort = this->_servers[i].getHost() + ":" + itostr(this->_servers[i].getPort());
+		
+		for (std::map<std::string, int>::iterator it = checkIpPort.begin(); it != checkIpPort.end(); it++) {
+			if (ipPort == it->first) {
+				this->_servers[i].setServerSocket(it->second);
+				this->_servers[i].setIsDup(true);
+				break;
+			}
+		}
+		if (this->_servers[i].getServerSocket() != -1)
+			continue;
 		this->_servers[i].setServerSocket(socket(AF_INET, SOCK_STREAM, 0));
 		if (this->_servers[i].getServerSocket() == -1)
 			continue;
-		if (setsockopt(this->_servers[i].getServerSocket(), SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt)))
+		if (setsockopt(this->_servers[i].getServerSocket(), SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)))
 			throw SocketFailed();
 		if (bind(this->_servers[i].getServerSocket(), (struct sockaddr *)&this->_servers[i].getAddress(), this->_servers[i].getAddrLen()) < 0)
 			throw SocketFailed();
 		if (listen(this->_servers[i].getServerSocket(), 10) < 0)
 			throw SocketFailed();
+		checkIpPort.insert(std::make_pair(ipPort, this->_servers[i].getServerSocket()));
 	}
 }
 
 void ServerManager::controlSockets(int epollFd) {
 	struct epoll_event event;
-	event.events = EPOLLIN;
+	event.events = EPOLLIN | EPOLLHUP;
 	for (size_t i = 0; i < this->_servers.size(); i++) {
+		if (this->_servers[i].getIsDup() == true)
+			continue;
 		event.data.fd = this->_servers[i].getServerSocket();
 		if (epoll_ctl(epollFd, EPOLL_CTL_ADD, this->_servers[i].getServerSocket(), &event) == -1)
 			throw SocketFailed();
@@ -77,15 +94,22 @@ int ServerManager::compareClientSocket(int eventFd) {
 void ServerManager::handleClientSocket(epoll_event event) {
 	char buffer[BUF_SIZE] = {0};
 	int index = compareClientSocket(event.data.fd);
-	std::cout << "index : " << index << std::endl;
-	if(recv(event.data.fd, buffer, BUF_SIZE, 0) <= 0)
+
+	if (event.events & EPOLLHUP) {
 		close(event.data.fd);
-	else {
-		Requests req(buffer, this->_servers[index]);
-		// std::cout  << "PATH FOR PY = " << "." << req.getCgiPathPy() << "." << std::endl;
-		std::string response = req.getResponse();
-		send(event.data.fd, response.c_str(), response.size(), 0);
-		close(event.data.fd);
+		return ;
+	}
+	else if (event.events & EPOLLIN)
+	{
+		std::cout << "index : " << index << std::endl;
+		if(recv(event.data.fd, buffer, BUF_SIZE, 0) <= 0)
+			close(event.data.fd);
+		else {
+			std::cout << buffer << std::endl;
+			Requests req(buffer, this->_servers[index]);
+			std::string response = req.getResponse();
+			send(event.data.fd, response.c_str(), response.size(), 0);
+		}
 	}
 }
 

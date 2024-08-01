@@ -29,6 +29,8 @@ int main(int argc, char **argv) {
         ServerManager manager(config.getServers());
         std::cout << "True Servers loaded: " << manager.getServers().size() << std::endl;
         manager.createSockets();
+        for (size_t i = 0; i < manager.getServers().size(); i++) {
+        }
         int epollFd = epoll_create1(0);
         if (epollFd == -1) {
             perror("epoll_create1");

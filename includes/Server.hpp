@@ -19,7 +19,9 @@ class Server {
         int getPort() const;
         std::string getServerName() const;
         void setServerSocket(int serverSocket);
+        void setIsDup(bool status);
         int getServerSocket() const;
+        bool getIsDup() const;
         void addClientSocket(int clientSocket);
         std::vector<int> getClientSockets() const;
         void rmClientSocket(int index);
@@ -29,6 +31,7 @@ class Server {
     private :
 
         int _serverSocket;
+        bool _isDup;
         struct sockaddr_in _address;
         int _addrLen;
         int _port;

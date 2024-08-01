@@ -62,3 +62,6 @@ class Requests {
 		std::string extractCgiPathPy() const;
 		void setCgiPathPy(const std::string &path);
 };
+
+std::string itostr(int nb);
+
