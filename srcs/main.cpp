@@ -5,7 +5,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <unistd.h>
-#include <sys/epoll.h>
+//#include <sys/epoll.h>
 #include <sstream>
 #include <arpa/inet.h>
 #include "../includes/Config.hpp"
@@ -26,8 +26,9 @@ int main(int argc, char **argv) {
     try {
         Config config(filename);
         std::cout << "Servers loaded: " << config.getServers().size() << std::endl;
-        ServerManager manager(config.getServers());
-        std::cout << "True Servers loaded: " << manager.getServers().size() << std::endl;
+       // ServerManager manager(config.getServers());
+       // std::cout << "True Servers loaded: " << manager.getServers().size() << std::endl;
+        /*
         manager.createSockets();
         for (size_t i = 0; i < manager.getServers().size(); i++) {
         }
@@ -52,6 +53,7 @@ int main(int argc, char **argv) {
                     manager.handleClientSocket(events[i]);
             }
         }
+        */
     }
     catch (const std::exception &e) {
         std::cerr << e.what() << std::endl;
