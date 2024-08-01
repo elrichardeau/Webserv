@@ -65,3 +65,5 @@ class Requests {
 		std::string _cgiPathPy;
 		std::string _cgiPathPhp;
 };
+
+std::string itostr(int nb);
