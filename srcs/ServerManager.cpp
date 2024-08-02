@@ -1,10 +1,6 @@
 
 #include "../includes/ServerManager.hpp"
 
-#define MAX_EVENTS 10
-#define BUF_SIZE 1024
-
-
 ServerManager::ServerManager(std::vector<ServerConfig> servers) {
 	for (size_t i = 0; i < servers.size(); i++) {
 		std::vector<int> ports = servers[i].getPorts();
