@@ -1,6 +1,8 @@
 
 #include "../includes/Server.hpp"
 
+Server::Server() {}
+
 Server::Server(ServerConfig serverConfig, int port) :   _serverSocket(-1),
                                                         _isDup(false),
                                                         _port(port),
@@ -15,6 +17,27 @@ Server::Server(ServerConfig serverConfig, int port) :   _serverSocket(-1),
     this->_address.sin_addr.s_addr = inet_addr(this->_host.c_str());
     this->_address.sin_port = htons(port);
     this->_addrLen = sizeof(this->_address);
+}
+
+Server& Server::operator=(const Server &copy) {
+    if (this == &copy)
+        return *this;
+    this->_serverSocket = copy._serverSocket;
+    this->_isDup = copy._isDup;
+    this->_port = copy._port;
+    this->_host = copy._host;
+    this->_serverName = copy._serverName;
+    this->_clientSockets = copy._clientSockets;
+    this->_clientMaxBodySize = copy._clientMaxBodySize;
+    this->_root = copy._root;
+    this->_locations = copy._locations;
+    this->_errorPages = copy._errorPages;
+    this->_address.sin_family = AF_INET;
+    this->_address.sin_addr.s_addr = inet_addr(this->_host.c_str());
+    this->_address.sin_port = htons(this->_port);
+    this->_addrLen = sizeof(this->_address);
+
+    return *this;
 }
 
 Server::~Server() {}

@@ -10,6 +10,8 @@ class Server {
 
     public :
 
+        Server();
+        Server& operator=(const Server &copy);
         Server(ServerConfig serverConfig, int port);
         ~Server();
 
@@ -35,8 +37,8 @@ class Server {
         struct sockaddr_in _address;
         int _addrLen;
         int _port;
-        const std::string _host;
-        const std::string _serverName;
+        std::string _host;
+        std::string _serverName;
         std::vector<int> _clientSockets;
         int _clientMaxBodySize;
         std::string _root;

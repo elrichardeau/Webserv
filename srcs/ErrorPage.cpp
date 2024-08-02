@@ -7,6 +7,8 @@ void createVector(std::vector<std::string> &tmp, const std::string &path, const 
 	tmp.push_back(message);
 }
 
+ErrorPage::ErrorPage() {}
+
 ErrorPage::ErrorPage(std::map<int, std::string> errorPages) : _protocol("HTTP/1.1"), _contentType("text/html") {
 	std::vector<std::string> tmp;
 	createVector(tmp, "./pages/error/400.html", "Bad Request");
@@ -28,6 +30,15 @@ ErrorPage::ErrorPage(std::map<int, std::string> errorPages) : _protocol("HTTP/1.
 			setNewPath(it->first, ("." + it->second));
 		}
 	}
+}
+
+ErrorPage& ErrorPage::operator=(const ErrorPage &copy) {
+	if (this == &copy)
+        return *this;
+	this->_errorPage = copy._errorPage;
+	this->_protocol = copy._protocol;
+	this->_contentType = copy._contentType;
+	return *this;
 }
 
 ErrorPage::~ErrorPage() {}

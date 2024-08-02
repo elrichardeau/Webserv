@@ -31,7 +31,7 @@ class Requests {
 
 	public :
 
-		Requests(const std::string &buf, const Server &servParam);
+		Requests(const std::string &buf, std::vector<Server> manager, int serverSocket);
 		~Requests();
 		std::string getResponse();
 
@@ -44,7 +44,7 @@ class Requests {
 		std::string _protocol;
 		std::vector<std::string> _accept;
 		std::string _contentType;
-		const Server _servParam;
+		Server _servParam;
 		std::string _cgiPathPy;
 		std::string _cgiPathPhp;
 

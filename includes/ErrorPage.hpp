@@ -12,6 +12,8 @@ class ErrorPage {
 
 	public :
 
+		ErrorPage();
+		ErrorPage& operator=(const ErrorPage &copy);
 		ErrorPage(std::map<int, std::string> errors);
 		~ErrorPage();
 		void setNewPath(int statusCode, const std::string &newPath);
@@ -23,6 +25,6 @@ class ErrorPage {
 	private :
 
 		std::map<int, std::vector<std::string> > _errorPage;
-		const std::string _protocol;
-		const std::string _contentType;
+		std::string _protocol;
+		std::string _contentType;
 };

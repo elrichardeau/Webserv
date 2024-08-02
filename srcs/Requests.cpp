@@ -77,7 +77,17 @@ void Requests::getFavicon() {
 		this->_path = "./pages/favicon.ico";
 }
 
-Requests::Requests(const std::string &buf, const Server &servParam) : _servParam(servParam) {
+Server findServerWithSocket(std::vector<Server> manager, int serverSocket, std::string serverName) {
+	(void)serverSocket;
+	(void)serverName;
+	std::cout << serverName << std::endl;
+	for (std::vector<Server>::iterator it = manager.begin(); it != manager.end(); it++) {
+		
+	}
+	return manager[0];
+}
+
+Requests::Requests(const std::string &buf, std::vector<Server> manager, int serverSocket) {
 	std::vector<std::string> bufSplitted = split(buf, "\n");
 	if (!isSyntaxGood(bufSplitted))
 		this->_statusCode = BAD_REQUEST;
@@ -89,6 +99,7 @@ Requests::Requests(const std::string &buf, const Server &servParam) : _servParam
 		request.insert(std::make_pair("Protocol", methodPathProtocol[2]));
 		for (size_t i = 1; i < bufSplitted.size() - 1; i++)
 			request.insert(std::make_pair(bufSplitted[i].substr(0, bufSplitted[i].find(": ")), bufSplitted[i].substr(bufSplitted[i].find(": ") + 2, bufSplitted[i].size())));
+		this->_servParam = findServerWithSocket(manager, serverSocket, request["Host"]);
 		this->_method = request["Method"];
 		this->_path = "." + request["Path"];
 		getFavicon();

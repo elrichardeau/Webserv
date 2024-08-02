@@ -89,7 +89,7 @@ int ServerManager::compareClientSocket(int eventFd, bool forClose) {
 					close(eventFd);
 					return -1;
 				}
-				return i;
+				return this->_servers[i].getServerSocket();
 			}
 		}
 	}
@@ -98,19 +98,19 @@ int ServerManager::compareClientSocket(int eventFd, bool forClose) {
 
 void ServerManager::handleClientSocket(epoll_event event) {
 	char buffer[BUF_SIZE] = {0};
-	int index = compareClientSocket(event.data.fd, 0);
+	int serverSocket = compareClientSocket(event.data.fd, 0);
 	if (event.events & EPOLLHUP) {
 		close(event.data.fd);
 		return ;
 	}
 	else if (event.events & EPOLLIN)
 	{
-		std::cout << "index : " << index << std::endl;
+		std::cout << "serverSocket : " << serverSocket << std::endl;
 		if(recv(event.data.fd, buffer, BUF_SIZE, 0) <= 0)
 			compareClientSocket(event.data.fd, 1);
 		else {
 			std::cout << buffer << std::endl;
-			Requests req(buffer, this->_servers[index]);
+			Requests req(buffer, this->_servers, serverSocket);
 			std::string response = req.getResponse();
 			send(event.data.fd, response.c_str(), response.size(), 0);
 		}
