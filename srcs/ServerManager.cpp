@@ -112,7 +112,10 @@ void ServerManager::handleClientSocket(epoll_event event) {
 			std::cout << buffer << std::endl;
 			Requests req(buffer, this->_servers, serverSocket);
 			std::string response = req.getResponse();
-			send(event.data.fd, response.c_str(), response.size(), 0);
+			if (response == "")
+				compareClientSocket(event.data.fd, 1);
+			else
+				send(event.data.fd, response.c_str(), response.size(), 0);
 		}
 	}
 }

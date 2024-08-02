@@ -77,13 +77,20 @@ void Requests::getFavicon() {
 		this->_path = "./pages/favicon.ico";
 }
 
-Server findServerWithSocket(std::vector<Server> manager, int serverSocket, std::string serverName) {
-	(void)serverSocket;
-	(void)serverName;
-	std::cout << serverName << std::endl;
-	for (std::vector<Server>::iterator it = manager.begin(); it != manager.end(); it++) {
-		
+Server Requests::findServerWithSocket(std::vector<Server> manager, int serverSocket, std::string serverName) {
+	size_t find = serverName.find(":");
+	if (find != std::string::npos)
+		serverName.erase(find, serverName.size());
+	if (serverName == "localhost" || isValidIPAddress(serverName)) {
+		for (std::vector<Server>::iterator it = manager.begin(); it != manager.end(); it++)
+			if (it->getServerSocket() == serverSocket)
+				return *it;
 	}
+	else
+		for (std::vector<Server>::iterator it = manager.begin(); it != manager.end(); it++)
+			if (it->getServerSocket() == serverSocket && it->getServerName() == serverName)
+				return *it;
+	this->_paramValid = 0;
 	return manager[0];
 }
 
@@ -99,6 +106,7 @@ Requests::Requests(const std::string &buf, std::vector<Server> manager, int serv
 		request.insert(std::make_pair("Protocol", methodPathProtocol[2]));
 		for (size_t i = 1; i < bufSplitted.size() - 1; i++)
 			request.insert(std::make_pair(bufSplitted[i].substr(0, bufSplitted[i].find(": ")), bufSplitted[i].substr(bufSplitted[i].find(": ") + 2, bufSplitted[i].size())));
+		this->_paramValid = 1;
 		this->_servParam = findServerWithSocket(manager, serverSocket, request["Host"]);
 		this->_method = request["Method"];
 		this->_path = "." + request["Path"];
@@ -170,23 +178,24 @@ std::string getPage(std::string filename, std::string responseStatus) {
 	return response;
 }
 
-std::string readFromPipe(int pipeFd)
-{
+std::string Requests::readFromPipe(int pipeFd) {
 	char buffer[4096];
-	std::string result;
 	ssize_t bytesRead = read(pipeFd, buffer, 4096 - 1);
-	if (bytesRead == -1)
-			return ("HTTP/1.1 500 Internal Server Error");
-
-	while (bytesRead  > 0)
-	{
+	if (bytesRead == -1) {
+		this->_statusCode = INTERNAL_SERVER_ERROR;
+		return "";
+	}
+	std::string result;
+	while (bytesRead > 0) {
 		buffer[bytesRead] = '\0';
 		result += buffer;
 		bytesRead = read(pipeFd, buffer, 4096 - 1);
-		if (bytesRead == -1)
-			return ("HTTP/1.1 500 Internal Server Error");
+		if (bytesRead == -1) {
+			this->_statusCode = INTERNAL_SERVER_ERROR;
+			return "";
+		}
 	}
-	return (result);
+	return result;
 }
 
 char **Requests::vectorToCharArray(const std::vector<std::string> &vector)
@@ -302,12 +311,17 @@ std::string  Requests::execCgi(const std::string& scriptType)
     std::string scriptContent = readFromPipe(fd[0]);
 	close(fd[0]);
 	std::string line;
+	if (this->_statusCode != OK)
+		return setErrorPage();
 	std::string response = "HTTP/1.1 200 OK\n\n";
         response.append(scriptContent + "\n");
+	return setResponse("OK") + scriptContent;
 	return response;
 }
 
 std::string Requests::getResponse() {
+	if (!this->_paramValid)
+		return "";
 	if (this->_statusCode == OK)
 		checkPage();
 	if (this->_statusCode == OK) {

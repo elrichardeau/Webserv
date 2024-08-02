@@ -13,6 +13,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include "Server.hpp"
+#include "Config.hpp"
 
 enum StatusCode {
 	OK = 200,
@@ -25,7 +26,6 @@ enum StatusCode {
 	INTERNAL_SERVER_ERROR = 500,
 	HTTP_VERSION_NOT_SUPPORTED = 505
 };
-
 
 class Requests {
 
@@ -45,6 +45,7 @@ class Requests {
 		std::vector<std::string> _accept;
 		std::string _contentType;
 		Server _servParam;
+		bool _paramValid;
 		std::string _cgiPathPy;
 		std::string _cgiPathPhp;
 
@@ -54,8 +55,10 @@ class Requests {
 		bool checkExtension();
 		std::string setErrorPage();
 		std::string setResponse(const std::string &codeName);
+		Server findServerWithSocket(std::vector<Server> manager, int serverSocket, std::string serverName);
 
 		std::string execCgi(const std::string& scriptType);
+		std::string readFromPipe(int pipeFd);
 		char** vectorToCharArray(const std::vector<std::string> &vector);
 	    std::vector<std::string> createCgiEnv();
 		std::string getCgiPathPy() const;
