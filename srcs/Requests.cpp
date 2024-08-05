@@ -208,7 +208,7 @@ Requests::Requests(const std::string &buf, std::vector<Server> manager, int serv
 		this->_paramValid = 1;
 		this->_servParam = findServerWithSocket(manager, serverSocket, request["Host"]);
 		this->_method = request["Method"];
-		this->_path = "." + request["Path"];
+		this->_path = "." + this->_servParam.getRoot() + request["Path"];
 		getFavicon();
 		this->_protocol = request["Protocol"];
 		this->_accept = getAccept(request["Accept"]);

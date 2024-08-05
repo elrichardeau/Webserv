@@ -55,4 +55,5 @@ std::vector<int> Server::getClientSockets() const {return this->_clientSockets;}
 void Server::rmClientSocket(int index) {this->_clientSockets.erase(this->_clientSockets.begin() + index);}
 std::vector<LocationConfig> Server::getLocations() const {return this->_locations;}
 ErrorPage Server::getErrorPage() const {return this->_errorPages;}
-size_t Server::getClientMaxBodySize() const {return this->_clientMaxBodySize;};
+size_t Server::getClientMaxBodySize() const {return this->_clientMaxBodySize;}
+std::string Server::getRoot() const {return this->_root;}

@@ -30,6 +30,7 @@ class Server {
         std::vector<LocationConfig> getLocations() const;
         ErrorPage getErrorPage() const;
         size_t getClientMaxBodySize() const;
+        std::string getRoot() const;
 
     private :
 
