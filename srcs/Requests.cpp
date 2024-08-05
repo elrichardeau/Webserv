@@ -60,7 +60,6 @@ std::vector<std::string> getAccept(std::string line) {
 
 void Requests::getQuery() {
 	size_t find = this->_path.find("?");
-
 	if (find != std::string::npos) {
 		this->_query = this->_path.substr(find + 1, this->_path.size());
 		this->_path.erase(find, this->_path.size());
