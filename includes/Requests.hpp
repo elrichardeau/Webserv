@@ -13,6 +13,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include "Server.hpp"
+#include "Config.hpp"
 
 enum StatusCode {
 	OK = 200,
@@ -26,12 +27,11 @@ enum StatusCode {
 	HTTP_VERSION_NOT_SUPPORTED = 505
 };
 
-
 class Requests {
 
 	public :
 
-		Requests(const std::string &buf, const Server &servParam);
+		Requests(const std::string &buf, std::vector<Server> manager, int serverSocket);
 		~Requests();
 		std::string getResponse();
 
@@ -44,7 +44,8 @@ class Requests {
 		std::string _protocol;
 		std::vector<std::string> _accept;
 		std::string _contentType;
-		const Server _servParam;
+		Server _servParam;
+		bool _paramValid;
 		std::string _cgiPathPy;
 		std::string _cgiPathPhp;
 
@@ -54,17 +55,18 @@ class Requests {
 		bool checkExtension();
 		std::string setErrorPage();
 		std::string setResponse(const std::string &codeName);
+		Server findServerWithSocket(std::vector<Server> manager, int serverSocket, std::string serverName);
 
-		std::string getCgiPathPy() const;
 		std::string execCgi(const std::string& scriptType);
+		std::string readFromPipe(int pipeFd);
 		char** vectorToCharArray(const std::vector<std::string> &vector);
 	    std::vector<std::string> createCgiEnv();
+		std::string getCgiPathPy() const;
 		std::string extractCgiPathPy() const;
 		std::string extractCgiPathPhp() const;
 		void setCgiPathPy(const std::string &path);
-		void setCgiPathPhp(const std::string &path);
 		std::string getCgiPathPhp() const;
+		void setCgiPathPhp(const std::string &path);
 };
 
 std::string itostr(int nb);
-

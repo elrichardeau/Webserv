@@ -9,6 +9,9 @@
 #include "Server.hpp"
 #include "Requests.hpp"
 
+#define MAX_EVENTS 10
+#define BUF_SIZE 1024
+
 class ServerManager {
 
 	public :
@@ -20,7 +23,7 @@ class ServerManager {
 		void controlSockets(int epollFd);
 		int compareServerSocket(int eventFd);
 		void handleServerSocket(int epollFd, int index);
-		int compareClientSocket(int eventFd);
+		int compareClientSocket(int eventFd, bool forClose);
 		void handleClientSocket(epoll_event event);
 
 		std::vector<Server> getServers() const;

@@ -78,3 +78,5 @@ class Config
 			std::string _message;
 	};
 };
+
+bool isValidIPAddress(const std::string &ip);
