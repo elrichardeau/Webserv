@@ -67,6 +67,8 @@ class Requests {
 		void setCgiPathPy(const std::string &path);
 		std::string getCgiPathPhp() const;
 		void setCgiPathPhp(const std::string &path);
+
+		std::string serveFavicon();
 };
 
 std::string itostr(int nb);

@@ -68,6 +68,7 @@ void Requests::getQuery() {
 	}
 }
 
+
 void Requests::getFavicon() {
 	size_t find = this->_path.find_last_of("/");
 	if (find == std::string::npos)
@@ -76,6 +77,34 @@ void Requests::getFavicon() {
 	if (tmp == "/favicon.ico")
 		this->_path = "./pages/favicon.ico";
 }
+
+std::string Requests::serveFavicon() 
+{
+    std::cout << "Favicon Requested" << std::endl;
+	std::string response;
+    std::ifstream file("favicon.ico", std::ios::binary);
+    if (file)
+	{
+        std::cout << "Favicon File Found" << std::endl;
+		std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+        response = "HTTP/1.1 200 OK\r\n";
+        response += "Content-Type: image/x-icon\r\n";
+		std::ostringstream ss;
+		ss << content.size();
+        response += "Content-Length: " + ss.str() + "\r\n";
+        response += "Cache-Control: max-age=86400\r\n";
+		response += "\r\n";
+        response += content;
+		std::cout << "Favicon Response Prepared: " << ss.str() << " bytes" << std::endl;
+    } 
+	else
+	{
+		std::cout << "Favicon File Not Found" << std::endl;
+		response = "HTTP/1.1 404 Not Found\r\n\r\n";
+	}
+    return response;
+}
+
 
 Server Requests::findServerWithSocket(std::vector<Server> manager, int serverSocket, std::string serverName) {
 	size_t find = serverName.find(":");
@@ -95,6 +124,7 @@ Server Requests::findServerWithSocket(std::vector<Server> manager, int serverSoc
 }
 
 Requests::Requests(const std::string &buf, std::vector<Server> manager, int serverSocket) {
+	std::cout << "Processing new request with buffer: \n" << buf << std::endl;
 	std::vector<std::string> bufSplitted = split(buf, "\n");
 	if (!isSyntaxGood(bufSplitted))
 		this->_statusCode = BAD_REQUEST;
@@ -152,29 +182,54 @@ bool Requests::checkExtension() {
 }
 
 void Requests::checkPage() {
+	std::cout << "Checking page for path: " << this->_path << std::endl;
 	DIR *dir = opendir(this->_path.c_str());
 	if (dir != NULL) {
+		std::cout << "Directory found: " << this->_path << std::endl;
 		closedir(dir);
 		std::string slash = "";
 		if (this->_path[this->_path.size() - 1] != '/')
 			slash = "/";
 		this->_path = this->_path + slash + "index.html";
+		std::cout << "New path: " << this->_path << std::endl;
+	}
+	else
+	{
+		std::cout << "Directory not found: " << this->_path << std::endl;
 	}
 	if (access(this->_path.c_str(), F_OK))
+	{
+		std::cout << "File not found: " << this->_path << std::endl;
 		this->_statusCode = NOT_FOUND;
+	}
 	else if (access(this->_path.c_str(), R_OK))
+	{
+		std::cout << "Read access denied: " << this->_path << std::endl;
 		this->_statusCode = FORBIDDEN;
+	}
 	else if (!checkExtension())
+	{
+		std::cout << "File extension not acceptable: " << this->_path << std::endl;
 		this->_statusCode = NOT_ACCEPTABLE;
+	}
+	else
+		std::cout << "File is accessible: " << this->_path << std::endl;
 }
 
 std::string getPage(std::string filename, std::string responseStatus) {
-    std::ifstream fd(filename.c_str());
+    std::cout << "Attempting to read page: " << filename << std::endl;
+	std::ifstream fd(filename.c_str());
+	if (!fd.is_open()) {
+        std::cerr << "Failed to open file: " << filename << std::endl;
+        return "HTTP/1.1 500 Internal Server Error\r\n\r\n";
+    }
     std::string line;
 	std::string response = responseStatus;
     while (getline(fd, line))
         response.append(line + "\n");
     fd.close();
+	std::cout << "Page read successfully: " << filename << std::endl;
+	//std::cout << "Page content: \n" << response << std::endl;
 	return response;
 }
 
@@ -264,6 +319,7 @@ std::string  Requests::execCgi(const std::string& scriptType) {
 			scriptInterpreter = this->_cgiPathPhp.c_str();
 		char **env = vectorToCharArray(createCgiEnv());
 		char *args[] = { const_cast<char*>(scriptInterpreter), const_cast<char*>(_path.c_str()), NULL };
+		 std::cout << "Executing script with interpreter: " << scriptInterpreter << std::endl;
 		execve(scriptInterpreter, args, env);
 		delete [] env;
 		exit(EXIT_FAILURE);
@@ -285,25 +341,44 @@ std::string  Requests::execCgi(const std::string& scriptType) {
 	std::string response = "HTTP/1.1 200 OK\n\n";
         response.append(scriptContent + "\n");
 	return setResponse("OK") + scriptContent;
+	std::cout << "Script executed successfully, response: " << response << std::endl;
 	return response;
 }
 
 std::string Requests::getResponse() {
+	std::cout << "Getting response for path: " << this->_path << std::endl;
 	if (!this->_paramValid)
+	{
+		std::cout << "Invalid parameters detected." << std::endl;
 		return "";
+	}
+	std::cout << "Getting response for path: " << this->_path << std::endl;
+	if (this->_path == "/pages/favicon.ico")
+	{
+		std::cout << "Favicon requested." << std::endl;
+		return serveFavicon();
+
+	}
 	if (this->_statusCode == OK)
+	{
+		std::cout << "Checking page access..." << std::endl;
 		checkPage();
+	}
+	std::cout << "Status code after checkPage: " << this->_statusCode << std::endl;
 	if (this->_statusCode == OK) {
 		std::vector<std::string> words = split(this->_path, ".");
 		if (words.size() == 1) {
+			    std::cout << "Invalid file path: No extension found." << std::endl;
 			this->_statusCode = BAD_REQUEST;
 			return setErrorPage();
 		}
 		if (words[words.size() - 1] == "py" || words[words.size() - 1] == "php") {
 			if (access((this->_path).c_str(), X_OK)) {
+				std::cout << "Access denied to script: " << this->_path << std::endl;
 				this->_statusCode = FORBIDDEN;
 				return setErrorPage();
 			}
+			std::cout << "Executing CGI script: " << this->_path << std::endl;
 			return execCgi(words[words.size() - 1]);
 		}
 		return getPage(this->_path, setResponse("OK"));
@@ -341,6 +416,8 @@ std::string Requests::setResponse(const std::string &codeName) {
 	}
 	response.append("Server: Webserv\n");
 	response.append("\n");
+	std::cout << "Response headers prepared: \n" << response << std::endl;
+
 	return response;
 }
 
