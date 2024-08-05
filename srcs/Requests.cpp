@@ -249,14 +249,13 @@ std::string  Requests::execCgi(const std::string& scriptType) {
 	if (!childPid) {
 		if (!this->_method.compare("POST")) {
 			close(fdBody[1]);
-			if (dup2(fd[0], STDIN_FILENO))
+			if (dup2(fdBody[0], STDIN_FILENO))
 				exit(EXIT_FAILURE);
+			close(fdBody[0]);
 		}
 		close(fd[0]);
-		if (dup2(fd[1], STDOUT_FILENO) == -1) {
-			perror("PIPE ERROR ");
+		if (dup2(fd[1], STDOUT_FILENO) == -1) 
 			exit(EXIT_FAILURE);
-		}
 		close(fd[1]);
 		if (!scriptType.compare("py"))
 			scriptInterpreter = this->_cgiPathPy.c_str();
