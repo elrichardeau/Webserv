@@ -63,9 +63,9 @@ class Requests {
 	    std::vector<std::string> createCgiEnv();
 		std::string getCgiPathPy() const;
 		std::string extractCgiPathPy() const;
+		std::string extractCgiPathPhp() const;
 		void setCgiPathPy(const std::string &path);
 		std::string getCgiPathPhp() const;
-		std::string extractCgiPathPhp() const;
 		void setCgiPathPhp(const std::string &path);
 };
 
