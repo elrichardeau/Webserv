@@ -60,7 +60,10 @@ class Requests {
 		char** vectorToCharArray(const std::vector<std::string> &vector);
 	    std::vector<std::string> createCgiEnv();
 		std::string extractCgiPathPy() const;
+		std::string extractCgiPathPhp() const;
 		void setCgiPathPy(const std::string &path);
+		void setCgiPathPhp(const std::string &path);
+		std::string getCgiPathPhp() const;
 };
 
 std::string itostr(int nb);
