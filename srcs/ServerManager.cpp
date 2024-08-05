@@ -17,7 +17,6 @@ ServerManager::~ServerManager() {
 void ServerManager::createSockets() {
 	std::map<std::string, int> checkIpPort;
 	std::string ipPort;
-
 	for (size_t i = 0; i < this->_servers.size(); i++) {
 		int opt = 1;
 		ipPort = this->_servers[i].getHost() + ":" + itostr(this->_servers[i].getPort());
@@ -99,8 +98,7 @@ void ServerManager::handleClientSocket(epoll_event event) {
 		close(event.data.fd);
 		return ;
 	}
-	else if (event.events & EPOLLIN)
-	{
+	else if (event.events & EPOLLIN) {
 		std::cout << "serverSocket : " << serverSocket << std::endl;
 		if(recv(event.data.fd, buffer, BUF_SIZE, 0) <= 0)
 			compareClientSocket(event.data.fd, 1);
