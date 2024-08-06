@@ -27,12 +27,6 @@ params = parse_query_string(query)
 name = params.get('name', ['N/A'])[0]
 age = params.get('age', ['N/A'])[0]
 
-print("Content-Type: text/html\n")
-
-# Print debug information
-print(f"Debug: QUERY_STRING = {query}<br>")
-print(f"Debug: Parsed Params = {params}<br>")
-
 print(f'''<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -48,7 +42,7 @@ print(f'''<!DOCTYPE html>
         <div class="tag">Age : <span class="value">{age}</span></div>
     </div>
     <div class="index">
-        <a class="indexButton" href="/index.html">Index</a>
+        <a class="indexButton" href="../index.html">Index</a>
     </div>
 </body>
 </html>''')
