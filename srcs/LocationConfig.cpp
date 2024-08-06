@@ -49,7 +49,7 @@ void LocationConfig::setIndex(const std::string &idx)
 	this->index = idx; 
 }
 
-void LocationConfig::setAutoIndex(const std::string &autoidx) 
+void LocationConfig::setAutoIndex(bool autoidx) 
 { 
 	this->autoindex = autoidx; 
 }
@@ -95,7 +95,7 @@ std::string LocationConfig::getIndex() const
 	return (this->index); 
 }
 
-std::string LocationConfig::getautoIndex() const
+bool LocationConfig::getautoIndex() const
 {
 	return (this->autoindex);
 }

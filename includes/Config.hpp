@@ -54,7 +54,7 @@ class Config
 		static void cgiExtensions(std::vector<std::string> &tokens, LocationConfig &currentLocation);
 		static void cgiPaths(std::vector<std::string> &tokens, LocationConfig &currentLocation);
 		static void uploadDir(std::vector<std::string> &tokens, LocationConfig &currentLocation);
-		static bool autoIndex(std::vector<std::string> &tokens, LocationConfig &currentLocation);
+		static void autoIndex(std::vector<std::string> &tokens, LocationConfig &currentLocation);
 
 		static void listen(std::vector<std::string> &tokens, ServerConfig &currentServer);
 		static void host(std::vector<std::string> &tokens, ServerConfig &currentServer);

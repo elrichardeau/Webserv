@@ -19,7 +19,7 @@ public:
     void setReturnDirective(const std::string &directive);
     void setPath(const std::string &p);
     void setIndex(const std::string &idx);
-    void setAutoIndex(const std::string &autoidx);
+    void setAutoIndex(bool autoidx);
     void setRoot(const std::string &rt);
     void setAllowMethods(const std::vector<std::string> &methods); 
     void addCgiExtension(const std::string &ext);
@@ -29,7 +29,7 @@ public:
     std::string getPath() const;
     std::vector<std::string> getAllowMethods() const;
     std::string getIndex() const;
-    std::string getautoIndex() const;
+    bool getautoIndex() const;
     std::string getRoot() const;
     std::vector<std::string> getCgiExtensions() const;
     std::map<std::string, std::string> getCgiPaths() const;
@@ -42,7 +42,7 @@ private:
     std::string path;
     std::vector<std::string> allowMethods;
     std::string index;
-    std::string autoindex;
+    bool autoindex;
     std::string root;
     std::vector<std::string> cgi_extension;
     std::map<std::string, std::string> cgi_path;

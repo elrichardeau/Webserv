@@ -191,27 +191,20 @@ void Config::uploadDir(std::vector<std::string> &tokens, LocationConfig &current
     }
 }
 
-bool Config::autoIndex(std::vector<std::string> &tokens, LocationConfig &currentLocation)
+void Config::autoIndex(std::vector<std::string> &tokens, LocationConfig &currentLocation)
 {
     if (tokens[0] == "autoindex")
     {
         if (tokens.size() < 2)
             throw InvalidConfig("Error: No autoindex specified.");
-        const std::string &value = tokens[1];
-        if (value == "on")
-        {
-            currentLocation.setAutoIndex(value);
-            return (true);
-        }
-        else if (value == "off")
-        {
-            currentLocation.setAutoIndex(value);
-            return (false);
-        }
+        if (tokens[1] == "on")
+            currentLocation.setAutoIndex(true);
+        else if (tokens[1] == "off")
+            currentLocation.setAutoIndex(false);
         else 
             throw InvalidConfig("Error: Invalid autoindex.");
     }
-    return (false);
+    currentLocation.setAutoIndex(false);
 }
 
 std::vector<std::string> Config::split(const std::string &str, char delimiter)
