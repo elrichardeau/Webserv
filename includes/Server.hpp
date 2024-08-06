@@ -29,6 +29,8 @@ class Server {
         void rmClientSocket(int index);
         std::vector<LocationConfig> getLocations() const;
         ErrorPage getErrorPage() const;
+        size_t getClientMaxBodySize() const;
+        std::string getRoot() const;
 
     private :
 
@@ -40,7 +42,7 @@ class Server {
         std::string _host;
         std::string _serverName;
         std::vector<int> _clientSockets;
-        int _clientMaxBodySize;
+        size_t _clientMaxBodySize;
         std::string _root;
         std::vector<LocationConfig> _locations;
         ErrorPage _errorPages;

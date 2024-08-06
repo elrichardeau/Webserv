@@ -23,6 +23,8 @@ ErrorPage::ErrorPage(std::map<int, std::string> errorPages) : _protocol("HTTP/1.
 	this->_errorPage.insert(std::make_pair(406, tmp));
 	createVector(tmp, "./pages/error/500.html", "Internal Server Error");
 	this->_errorPage.insert(std::make_pair(500, tmp));
+	createVector(tmp, "./pages/error/501.html", "Not Implemented");
+	this->_errorPage.insert(std::make_pair(501, tmp));
 	createVector(tmp, "./pages/error/505.html", "Version not supported");
 	this->_errorPage.insert(std::make_pair(505, tmp));
 	for (MapIterator it = errorPages.begin(); it != errorPages.end(); it++) {
