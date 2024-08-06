@@ -178,21 +178,28 @@ std::string Requests::getBody(std::vector<std::string> bufSplitted, size_t index
 std::string Requests::getRootPath(const std::string &path) {
 	if (path == "/favicon.ico")
 		return "./pages/favicon.ico";
-	// std::vector<LocationConfig> tmp = this->_servParam.getLocations();
-	// for (size_t i = 0; i < tmp.size(); i++) {
-	// 	if (tmp[i].getPath() == path)
-	// 		std::cout << "Path found : " << path << std::endl; 
-	// }
-	// for (size_t i = 0; i < tmp.size(); i++) {
-	// 	std::cout << "Path dir : " << tmp[i].getPath() << "?" << std::endl;
-	// 	std::cout << "First method : " << tmp[i].getAllowMethods()[0] << "?" << std::endl;
-	// 	std::cout << "Index : " << tmp[i].getIndex() << "?" << std::endl;
-	// 	std::cout << "Auto index : " << tmp[i].getautoIndex() << "?" << std::endl;
-	// 	std::cout << "Root : " << tmp[i].getRoot() << "?" << std::endl;
-	// 	std::cout << "Upload dir : " << tmp[i].getUploadDir() << "?" << std::endl;
-	// 	std::cout << "Return dir : " << tmp[i].getReturnDirective() << "?" << std::endl;
-	// 	std::cout << std::endl;
-	// }
+	if (path == "/") {this->_statusCode = OK;return "." + this->_servParam.getRoot() + path;} //change
+	std::vector<LocationConfig> tmp = this->_servParam.getLocations();
+	std::string firstPath = "/" + split(path, "/")[1] + "/";
+	std::cout << firstPath << std::endl;
+	std::cout << std::endl;
+	for (size_t i = 0; i < tmp.size(); i++) {
+		if (!(tmp[i].getPath() + "/").compare(0, firstPath.size(), firstPath)) {
+			std::cout << "Path found : " << path << std::endl;
+			std::cout << "Path dir : " << tmp[i].getPath() << std::endl;
+			std::cout << "First method : " << tmp[i].getAllowMethods()[0] << std::endl;
+			std::cout << "Index : " << tmp[i].getIndex() << std::endl;
+			std::cout << "Auto index : " << tmp[i].getautoIndex() << std::endl;
+			std::cout << "Root : " << tmp[i].getRoot() << std::endl;
+			std::cout << "Upload dir : " << tmp[i].getUploadDir() << std::endl;
+			std::cout << "Return dir : " << tmp[i].getReturnDirective() << std::endl;
+			this->_allowMethod = tmp[i].getAllowMethods();
+			this->_statusCode = OK;
+			return "." + tmp[i].getRoot() + path;
+		}
+	}
+	this->_allowMethod.push_back("GET");
+	this->_statusCode = OK;
 	return "." + this->_servParam.getRoot() + path;
 }
 
@@ -227,10 +234,9 @@ Requests::Requests(const std::string &buf, std::vector<Server> manager, int serv
 		getQuery();
 		setCgiPathPy(extractCgiPathPy());
 		setCgiPathPhp(extractCgiPathPhp());
+		std::cout << "code : " << this->_statusCode << std::endl;
 		if (this->_protocol != "HTTP/1.1")
 			this->_statusCode = HTTP_VERSION_NOT_SUPPORTED;
-		else
-			this->_statusCode = OK;
 	}
 }
 

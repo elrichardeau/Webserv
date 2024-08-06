@@ -204,8 +204,6 @@ void Config::autoIndex(std::vector<std::string> &tokens, LocationConfig &current
         else 
             throw InvalidConfig("Error: Invalid autoindex.");
     }
-    else 
-        currentLocation.setAutoIndex(false);
 }
 
 std::vector<std::string> Config::split(const std::string &str, char delimiter)

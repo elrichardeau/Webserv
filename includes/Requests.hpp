@@ -44,6 +44,7 @@ class Requests {
 		std::string _query;
 		std::string _protocol;
 		std::vector<std::string> _accept;
+		std::vector<std::string> _allowMethod;
 		std::string _contentType;
 		Server _servParam;
 		bool _paramValid;
