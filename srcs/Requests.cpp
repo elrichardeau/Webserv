@@ -321,8 +321,8 @@ std::vector<std::string> Requests::createCgiEnv() {
 	if (!this->_method.compare("GET"))
 		exportVar(env, "QUERY_STRING", this->_query);
 	else if (!this->_method.compare("POST")) {
-		exportVar(env, "CONTENT_LENGTH", "");
-		exportVar(env, "CONTENT_TYPE", "");
+		exportVar(env, "CONTENT_LENGTH", itostr(this->_body.size()));
+		exportVar(env, "CONTENT_TYPE", "x-www-form-urlencoded");
 	}
 	return env;
 }
@@ -342,11 +342,12 @@ std::string  Requests::execCgi(const std::string& scriptType) {
 	if (!this->_method.compare("POST")) {
 		if (pipe(fdBody) == -1)
 			return this->_statusCode = 500, setErrorPage();
-		if (write(fdBody[1], this->_body.c_str(), this->_body.size()))
+		if (write(fdBody[1], this->_body.c_str(), static_cast<int>(this->_body.size())) == -1)
 			return this->_statusCode = 500, setErrorPage();
 	}
 	if (!childPid) {
 		if (!this->_method.compare("POST")) {
+			std::cout << "CONTENT TYPE  " << this->_contentType << std::endl;
 			close(fdBody[1]);
 			if (dup2(fdBody[0], STDIN_FILENO))
 				exit(EXIT_FAILURE);
