@@ -17,7 +17,7 @@
             <div class="tag">Age : <span class="value">' .$params['age'] . '</span></div>
         </div>
         <div class="index">
-            <a class="indexButton" href="/index.html">Index</a>
+            <a class="indexButton" href="../index.html">Index</a>
         </div>
     </body>
     </html>';
