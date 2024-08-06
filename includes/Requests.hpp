@@ -53,12 +53,12 @@ class Requests {
 
 		void getQuery();
 		void checkPage();
-		void getFavicon();
 		bool checkExtension();
 		std::string setErrorPage();
 		std::string setResponse(const std::string &codeName);
 		Server findServerWithSocket(std::vector<Server> manager, int serverSocket, std::string serverName);
 		std::string getBody(std::vector<std::string> bufSplitted, size_t i, std::map<std::string, std::string> request);
+		std::string getRootPath(const std::string &path);
 
 		std::string execCgi(const std::string& scriptType);
 		std::string readFromPipe(int pipeFd);

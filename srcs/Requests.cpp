@@ -101,15 +101,6 @@ void Requests::getQuery() {
 	}
 }
 
-void Requests::getFavicon() {
-	size_t find = this->_path.find_last_of("/");
-	if (find == std::string::npos)
-		return;
-	std::string tmp = this->_path.substr(find, this->_path.size());
-	if (tmp == "/favicon.ico")
-		this->_path = "./pages/favicon.ico";
-}
-
 Server Requests::findServerWithSocket(std::vector<Server> manager, int serverSocket, std::string serverName) {
 	size_t find = serverName.find(":");
 	if (find != std::string::npos)
@@ -184,6 +175,27 @@ std::string Requests::getBody(std::vector<std::string> bufSplitted, size_t index
 	return "";
 }
 
+std::string Requests::getRootPath(const std::string &path) {
+	if (path == "/favicon.ico")
+		return "./pages/favicon.ico";
+	// std::vector<LocationConfig> tmp = this->_servParam.getLocations();
+	// for (size_t i = 0; i < tmp.size(); i++) {
+	// 	if (tmp[i].getPath() == path)
+	// 		std::cout << "Path found : " << path << std::endl; 
+	// }
+	// for (size_t i = 0; i < tmp.size(); i++) {
+	// 	std::cout << "Path dir : " << tmp[i].getPath() << "?" << std::endl;
+	// 	std::cout << "First method : " << tmp[i].getAllowMethods()[0] << "?" << std::endl;
+	// 	std::cout << "Index : " << tmp[i].getIndex() << "?" << std::endl;
+	// 	std::cout << "Auto index : " << tmp[i].getautoIndex() << "?" << std::endl;
+	// 	std::cout << "Root : " << tmp[i].getRoot() << "?" << std::endl;
+	// 	std::cout << "Upload dir : " << tmp[i].getUploadDir() << "?" << std::endl;
+	// 	std::cout << "Return dir : " << tmp[i].getReturnDirective() << "?" << std::endl;
+	// 	std::cout << std::endl;
+	// }
+	return "." + this->_servParam.getRoot() + path;
+}
+
 Requests::Requests(const std::string &buf, std::vector<Server> manager, int serverSocket) {
 	std::vector<std::string> bufSplitted = split(buf, "\n");
 	if (!isSyntaxGood(bufSplitted)) {
@@ -208,8 +220,7 @@ Requests::Requests(const std::string &buf, std::vector<Server> manager, int serv
 		this->_paramValid = 1;
 		this->_servParam = findServerWithSocket(manager, serverSocket, request["Host"]);
 		this->_method = request["Method"];
-		this->_path = "." + this->_servParam.getRoot() + request["Path"];
-		getFavicon();
+		this->_path = getRootPath(request["Path"]);
 		this->_protocol = request["Protocol"];
 		this->_accept = getAccept(request["Accept"]);
 		this->_body = request["Body"];
