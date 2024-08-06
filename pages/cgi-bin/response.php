@@ -1,5 +1,13 @@
 <?php
 
+echo "ENV: REQUEST_METHOD=" . $_SERVER["REQUEST_METHOD"] . " ";
+echo "ENV: SCRIPT_NAME=" . $_SERVER["SCRIPT_NAME"] . " ";
+echo "ENV: SERVER_PROTOCOL=" . $_SERVER["SERVER_PROTOCOL"] . " ";
+echo "ENV: SERVER_SOFTWARE=" . $_SERVER["SERVER_SOFTWARE"] . " ";
+echo "ENV: CONTENT_LENGTH=" . $_SERVER["CONTENT_LENGTH"] . " ";
+echo "ENV: CONTENT_TYPE=" . $_SERVER["CONTENT_TYPE"] . " ";
+echo "Raw POST Data: ";
+
 if ($_SERVER["REQUEST_METHOD"] == "GET") {
     $query = $_SERVER["QUERY_STRING"];
     $params = array();
@@ -29,7 +37,15 @@ if ($_SERVER["REQUEST_METHOD"] == "GET") {
     echo "Raw POST Data: " . $postData . "\n";
     parse_str($postData, $params);
 
-    echo '<pre>POST Data: ' . print_r($params, true) . '</pre>';
+    echo '<pre>POST Data from php://input: ' . print_r($params, true) . '</pre>';
+
+    // Essayer une autre méthode pour lire les données POST
+    $postData = stream_get_contents(STDIN);
+    echo "Alternative Raw POST Data: " . $postData . "\n";
+    parse_str($postData, $params);
+
+    echo '<pre>POST Data from stream_get_contents: ' . print_r($params, true) . '</pre>';
+
     $name = htmlspecialchars($params['name'] ?? 'N/A');
     $age = htmlspecialchars($params['age'] ?? 'N/A');
 

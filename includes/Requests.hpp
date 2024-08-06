@@ -72,7 +72,6 @@ class Requests {
 		std::string getCgiPathPhp() const;
 		void setCgiPathPhp(const std::string &path);
 
-		void exportVar(std::vector<std::string>& env, const std::string& key, const std::string& value);
 };
 
 std::string itostr(int nb);
