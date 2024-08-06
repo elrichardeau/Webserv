@@ -63,7 +63,7 @@ void ServerConfig::setRoot(const std::string &rt)
 
 void ServerConfig::addLocation(const LocationConfig &loc) 
 { 
-	locations.push_back(loc);
+    locations.push_back(loc);
 }
 
 void ServerConfig::addErrorPage(int code, const std::string &path)
