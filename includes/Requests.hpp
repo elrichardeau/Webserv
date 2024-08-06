@@ -49,6 +49,7 @@ class Requests {
 		bool _paramValid;
 		std::string _cgiPathPy;
 		std::string _cgiPathPhp;
+		std::string _body;
 
 		void getQuery();
 		void checkPage();

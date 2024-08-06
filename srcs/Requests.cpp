@@ -212,6 +212,7 @@ Requests::Requests(const std::string &buf, std::vector<Server> manager, int serv
 		getFavicon();
 		this->_protocol = request["Protocol"];
 		this->_accept = getAccept(request["Accept"]);
+		this->_body = request["Body"];
 		getQuery();
 		setCgiPathPy(extractCgiPathPy());
 		setCgiPathPhp(extractCgiPathPhp());
@@ -339,10 +340,9 @@ std::string  Requests::execCgi(const std::string& scriptType) {
 		return this->_statusCode = 500, setErrorPage();
 	//si POST, on crée un | pour permettre l'écriture et la lecture du body
 	if (!this->_method.compare("POST")) {
-		std::string _body = "name=John+Doe&email=john.doe%40example.com&age=30";
 		if (pipe(fdBody) == -1)
 			return this->_statusCode = 500, setErrorPage();
-		if (write(fdBody[1], _body.c_str(), _body.size()))
+		if (write(fdBody[1], this->_body.c_str(), this->_body.size()))
 			return this->_statusCode = 500, setErrorPage();
 	}
 	if (!childPid) {
