@@ -325,83 +325,206 @@ char **Requests::vectorToCharArray(const std::vector<std::string> &vector) {
 	return arr;
 }
 
-static void exportVar(std::vector<std::string> &env, const std::string&key, const std::string& value) {env.push_back(key + '=' + value);}
+// static void exportVar(std::vector<std::string> &env, const std::string&key, const std::string& value) {env.push_back(key + '=' + value);}
+
+// std::vector<std::string> Requests::createCgiEnv() {
+// 	std::vector<std::string> env;
+// 	exportVar(env, "REQUEST_METHOD", this->_method);
+// 	exportVar(env, "SCRIPT_NAME", "response.php");
+// 	exportVar(env, "SERVER_PROTOCOL", "HTTP/1.1");
+// 	exportVar(env, "SERVER_SOFTWARE", "webserv/1.1");
+// 	// exportVar(env, "DOCUMENT_ROOT", "/var/www/html");
+// 	if (!this->_method.compare("GET"))
+// 		exportVar(env, "QUERY_STRING", this->_query);
+// 	else if (!this->_method.compare("POST")) {
+// 		exportVar(env, "CONTENT_LENGTH", itostr(this->_body.size()));
+// 		exportVar(env, "CONTENT_TYPE", "application/x-www-form-urlencoded");
+// 	}
+// 	return env;
+// }
+
+void Requests::exportVar(std::vector<std::string>& env, const std::string& key, const std::string& value) {
+    env.push_back(key + "=" + value);
+}
+
 
 std::vector<std::string> Requests::createCgiEnv() {
-	std::vector<std::string> env;
-	exportVar(env, "REQUEST_METHOD", this->_method);
-	exportVar(env, "SCRIPT_NAME", "response.php");
-	exportVar(env, "SERVER_PROTOCOL", "HTTP/1.1");
-	exportVar(env, "SERVER_SOFTWARE", "webserv/1.1");
-	// exportVar(env, "DOCUMENT_ROOT", "/var/www/html");
-	if (!this->_method.compare("GET"))
-		exportVar(env, "QUERY_STRING", this->_query);
-	else if (!this->_method.compare("POST")) {
-		exportVar(env, "CONTENT_LENGTH", itostr(this->_body.size()));
-		exportVar(env, "CONTENT_TYPE", "x-www-form-urlencoded");
-	}
-	return env;
+    std::vector<std::string> env;
+    exportVar(env, "REQUEST_METHOD", this->_method);
+    exportVar(env, "SCRIPT_NAME", "response.php");
+    exportVar(env, "SERVER_PROTOCOL", "HTTP/1.1");
+    exportVar(env, "SERVER_SOFTWARE", "webserv/1.1");
+
+    if (!this->_method.compare("GET"))
+        exportVar(env, "QUERY_STRING", this->_query);
+    else if (!this->_method.compare("POST")) {
+        exportVar(env, "CONTENT_LENGTH", itostr(this->_body.size()));
+    	exportVar(env, "CONTENT_TYPE", "application/x-www-form-urlencoded");
+    }
+    return env;
 }
 
-std::string  Requests::execCgi(const std::string& scriptType) {
-	int childPid;
-	int childValue;
-	int fd[2];
-	int fdBody[2];
-	const char *scriptInterpreter;
-	if (pipe(fd) == -1)
-		return this->_statusCode = 500, setErrorPage();
-	childPid = fork();
-	if (childPid == -1)
-		return this->_statusCode = 500, setErrorPage();
-	//si POST, on crée un | pour permettre l'écriture et la lecture du body
-	if (!this->_method.compare("POST")) {
-		if (pipe(fdBody) == -1)
-			return this->_statusCode = 500, setErrorPage();
-		if (write(fdBody[1], this->_body.c_str(), static_cast<int>(this->_body.size())) == -1)
-			return this->_statusCode = 500, setErrorPage();
-	}
-	if (!childPid) {
-		if (!this->_method.compare("POST")) {
-			std::cout << "CONTENT TYPE  " << this->_contentType << std::endl;
-			close(fdBody[1]);
-			if (dup2(fdBody[0], STDIN_FILENO))
-				exit(EXIT_FAILURE);
-			close(fdBody[0]);
-		}
-		close(fd[0]);
-		if (dup2(fd[1], STDOUT_FILENO) == -1) 
-			exit(EXIT_FAILURE);
-		close(fd[1]);
-		if (!scriptType.compare("py"))
-			scriptInterpreter = this->_cgiPathPy.c_str();
-		else
-			scriptInterpreter = this->_cgiPathPhp.c_str();
-		char **env = vectorToCharArray(createCgiEnv());
-		char *args[] = { const_cast<char*>(scriptInterpreter), const_cast<char*>(_path.c_str()), NULL };
-		execve(scriptInterpreter, args, env);
-		delete [] env;
-		exit(EXIT_FAILURE);
-	}
-	if (waitpid(childPid, &childValue, WUNTRACED) == -1)
-			return close(fd[0]), close(fd[1]), this->_statusCode = 500, setErrorPage();
-	if (WEXITSTATUS(childValue) == 1)
-		return close(fd[0]), close(fd[1]), this->_statusCode = 500, setErrorPage();
-	if (!this->_method.compare("POST")) {
-		close(fdBody[0]);
-		close(fdBody[1]);
-	}
-	close(fd[1]); 
+
+std::string Requests::execCgi(const std::string& scriptType) {
+    int childPid;
+    int childValue;
+    int fd[2];
+    int fdBody[2];
+    const char *scriptInterpreter;
+
+    std::cout << "Executing CGI script: " << scriptType << std::endl;
+
+    if (pipe(fd) == -1) {
+        std::cerr << "Error: Failed to create pipe for CGI stdout." << std::endl;
+        return this->_statusCode = 500, setErrorPage();
+    }
+
+    childPid = fork();
+    if (childPid == -1) {
+        std::cerr << "Error: Failed to fork process for CGI." << std::endl;
+        return this->_statusCode = 500, setErrorPage();
+    }
+
+    if (!this->_method.compare("POST")) {
+        std::cout << "Processing POST request." << std::endl;
+        if (pipe(fdBody) == -1) {
+            std::cerr << "Error: Failed to create pipe for CGI stdin." << std::endl;
+            return this->_statusCode = 500, setErrorPage();
+        }
+        if (write(fdBody[1], this->_body.c_str(), static_cast<int>(this->_body.size())) == -1) {
+            std::cerr << "Error: Failed to write POST body to pipe." << std::endl;
+            return this->_statusCode = 500, setErrorPage();
+        }
+        std::cout << "POST body written to pipe: " << this->_body << std::endl;
+        close(fdBody[1]);
+    }
+
+    if (!childPid) {
+        if (!this->_method.compare("POST")) {
+            close(fdBody[1]);
+            if (dup2(fdBody[0], STDIN_FILENO) == -1) {
+                std::cerr << "Error: Failed to duplicate fdBody[0] to STDIN." << std::endl;
+                exit(EXIT_FAILURE);
+            }
+            close(fdBody[0]);
+        }
+        close(fd[0]);
+        if (dup2(fd[1], STDOUT_FILENO) == -1) {
+            std::cerr << "Error: Failed to duplicate fd[1] to STDOUT." << std::endl;
+            exit(EXIT_FAILURE);
+        }
+        close(fd[1]);
+
+        if (!scriptType.compare("py"))
+            scriptInterpreter = this->_cgiPathPy.c_str();
+        else
+            scriptInterpreter = this->_cgiPathPhp.c_str();
+
+        char **env = vectorToCharArray(createCgiEnv());
+
+        // Log the environment variables
+        for (size_t i = 0; env[i] != NULL; ++i) {
+            std::cout << "ENV: " << env[i] << std::endl;
+        }
+
+        char *args[] = { const_cast<char*>(scriptInterpreter), const_cast<char*>(_path.c_str()), NULL };
+        execve(scriptInterpreter, args, env);
+        std::cerr << "Error: execve failed for " << scriptInterpreter << std::endl;
+        delete [] env;
+        exit(EXIT_FAILURE);
+    }
+
+    if (waitpid(childPid, &childValue, WUNTRACED) == -1) {
+        std::cerr << "Error: waitpid failed." << std::endl;
+        return close(fd[0]), close(fd[1]), this->_statusCode = 500, setErrorPage();
+    }
+
+    if (WEXITSTATUS(childValue) == 1) {
+        std::cerr << "Error: CGI script exited with status 1." << std::endl;
+        return close(fd[0]), close(fd[1]), this->_statusCode = 500, setErrorPage();
+    }
+
+    if (!this->_method.compare("POST")) {
+        close(fdBody[0]);
+        close(fdBody[1]);
+    }
+    close(fd[1]);
+
     std::string scriptContent = readFromPipe(fd[0]);
-	close(fd[0]);
-	std::string line;
-	if (this->_statusCode != OK)
-		return setErrorPage();
-	std::string response = "HTTP/1.1 200 OK\n\n";
-        response.append(scriptContent + "\n");
-	return setResponseScript(scriptContent, "OK") + scriptContent;
-	return response;
+    close(fd[0]);
+
+    if (this->_statusCode != OK)
+        return setErrorPage();
+
+    std::string response = "HTTP/1.1 200 OK\n\n";
+    response.append(scriptContent + "\n");
+    return setResponseScript(scriptContent, "OK") + scriptContent;
 }
+
+
+// std::string  Requests::execCgi(const std::string& scriptType) {
+// 	int childPid;
+// 	int childValue;
+// 	int fd[2];
+// 	int fdBody[2];
+// 	const char *scriptInterpreter;
+// 	if (pipe(fd) == -1)
+// 		return this->_statusCode = 500, setErrorPage();
+// 	childPid = fork();
+// 	if (childPid == -1)
+// 		return this->_statusCode = 500, setErrorPage();
+// 	//si POST, on crée un | pour permettre l'écriture et la lecture du body
+// 	if (!this->_method.compare("POST")) {
+// 		if (pipe(fdBody) == -1)
+// 			return this->_statusCode = 500, setErrorPage();
+// 		if (write(fdBody[1], this->_body.c_str(), static_cast<int>(this->_body.size())) == -1)
+// 			return this->_statusCode = 500, setErrorPage();
+// 	}
+// 	if (!childPid) {
+// 		if (!this->_method.compare("POST")) {
+// 			std::cout << "CONTENT TYPE  " << this->_contentType << std::endl;
+// 			close(fdBody[1]);
+// 			if (dup2(fdBody[0], STDIN_FILENO))
+// 				exit(EXIT_FAILURE);
+// 			close(fdBody[0]);
+// 			char buffer[1024];
+// 			int check = read(STDIN_FILENO, buffer, this->_body.size());
+// 			buffer[check] = '\0';
+// 			std::cout << "BUFFER = " << buffer << std::endl;
+// 		}
+// 		close(fd[0]);
+// 		if (dup2(fd[1], STDOUT_FILENO) == -1) 
+// 			exit(EXIT_FAILURE);
+// 		close(fd[1]);
+// 		if (!scriptType.compare("py"))
+// 			scriptInterpreter = this->_cgiPathPy.c_str();
+// 		else
+// 			scriptInterpreter = this->_cgiPathPhp.c_str();
+// 		char **env = vectorToCharArray(createCgiEnv());
+// 		char *args[] = { const_cast<char*>(scriptInterpreter), const_cast<char*>(_path.c_str()), NULL };
+// 		execve(scriptInterpreter, args, env);
+// 		delete [] env;
+// 		exit(EXIT_FAILURE);
+// 	}
+// 	if (waitpid(childPid, &childValue, WUNTRACED) == -1)
+// 			return close(fd[0]), close(fd[1]), this->_statusCode = 500, setErrorPage();
+// 	if (WEXITSTATUS(childValue) == 1)
+// 		return close(fd[0]), close(fd[1]), this->_statusCode = 500, setErrorPage();
+// 	if (!this->_method.compare("POST")) {
+// 		close(fdBody[0]);
+// 		close(fdBody[1]);
+// 	}
+// 	close(fd[1]); 
+//     std::string scriptContent = readFromPipe(fd[0]);
+// 	close(fd[0]);
+// 	std::string line;
+// 	if (this->_statusCode != OK)
+// 		return setErrorPage();
+// 	std::string response = "HTTP/1.1 200 OK\n\n";
+//         response.append(scriptContent + "\n");
+// 	return setResponseScript(scriptContent, "OK") + scriptContent;
+// 	return response;
+// }
 
 std::string Requests::getResponse() {
 	if (!this->_paramValid)
