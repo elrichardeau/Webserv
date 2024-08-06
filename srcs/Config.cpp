@@ -44,7 +44,7 @@ void Config::addServer(const ServerConfig &server)
     if (!isUniqueServer(server))
         throw InvalidConfig("Duplicate server configuration detected.");
     servers.push_back(server);
-    std::cout << "Server added. Total servers: " << servers.size() << std::endl;
+    // std::cout << "Server added. Total servers: " << servers.size() << std::endl;
 }
 
 std::vector<ServerConfig> Config::getServers() const 
@@ -466,7 +466,8 @@ void Config::handleReturn(std::vector<std::string> &tokens, LocationConfig &curr
         const std::string &path = tokens[2];
         if (path[0] != '/')
             throw InvalidConfig("Error: Return code path must start with '/'.");
-        currentLocation.setReturnDirective(tokens[1] + " " + tokens[2]);
+        std::string directive = tokens[1] + " " + tokens[2];
+        currentLocation.setReturnDirective(directive);
     }
 }
 
@@ -546,7 +547,6 @@ void Config::readConfig(const std::string &filename)
     if (!hasReadData)
         throw InvalidConfig("Error: Wrong configuration file.");
 }
-
 
 
 

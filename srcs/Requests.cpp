@@ -270,6 +270,7 @@ void Requests::checkPage() {
 		if (this->_path[this->_path.size() - 1] != '/')
 			slash = "/";
 		this->_path = this->_path + slash + "index.html";
+
 	}
 	if (access(this->_path.c_str(), F_OK))
 		this->_statusCode = NOT_FOUND;
@@ -280,7 +281,11 @@ void Requests::checkPage() {
 }
 
 std::string getPage(std::string filename, std::string responseStatus) {
-    std::ifstream fd(filename.c_str());
+	std::ifstream fd(filename.c_str());
+	if (!fd.is_open()) {
+        std::cerr << "Failed to open file: " << filename << std::endl;
+        return "HTTP/1.1 500 Internal Server Error\r\n\r\n";
+    }
     std::string line;
 	std::string response = responseStatus;
     while (getline(fd, line))
@@ -394,7 +399,7 @@ std::string  Requests::execCgi(const std::string& scriptType) {
 		return setErrorPage();
 	std::string response = "HTTP/1.1 200 OK\n\n";
         response.append(scriptContent + "\n");
-	return setResponse("OK") + scriptContent;
+	return setResponseScript(scriptContent, "OK") + scriptContent;
 	return response;
 }
 
@@ -449,6 +454,20 @@ std::string Requests::setResponse(const std::string &codeName) {
 		response.append("Last-Modified: ");
 		response.append(ctime(&buf.st_mtime));
 	}
+	response.append("Server: Webserv\n");
+	response.append("\n");
+	return response;
+}
+
+std::string Requests::setResponseScript(const std::string &scriptResult, const std::string &codeName) {
+	std::string response;
+	response.append(this->_protocol + " " + itostr(this->_statusCode) + " " + codeName + "\n");
+	response.append("Connection: Keep-Alive\n");
+	response.append("Content-Length: ");
+	response.append(itostr(strlen(scriptResult.c_str())));
+	response.append("\n");
+	response.append("Content-Location: " + this->_path.substr(1, this->_path.size()) + "\n");
+	response.append("Content-Type: " + this->_contentType + "\n");
 	response.append("Server: Webserv\n");
 	response.append("\n");
 	return response;

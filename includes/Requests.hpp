@@ -67,6 +67,7 @@ class Requests {
 		std::string getCgiPathPy() const;
 		std::string extractCgiPathPy() const;
 		std::string extractCgiPathPhp() const;
+		std::string setResponseScript(const std::string &scriptResult, const std::string &codeName);
 		void setCgiPathPy(const std::string &path);
 		std::string getCgiPathPhp() const;
 		void setCgiPathPhp(const std::string &path);

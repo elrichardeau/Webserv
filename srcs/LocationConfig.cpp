@@ -6,7 +6,7 @@ LocationConfig::LocationConfig()
 
 LocationConfig::LocationConfig(LocationConfig const &other) : path(other.path), allowMethods(other.allowMethods), index(other.index),
   autoindex(other.autoindex), root(other.root), cgi_extension(other.cgi_extension),
-  cgi_path(other.cgi_path), upload_dir(other.upload_dir)
+  cgi_path(other.cgi_path), upload_dir(other.upload_dir), returnDirective(other.returnDirective)
 {}
 
 LocationConfig &LocationConfig::operator=(LocationConfig const &other)
@@ -21,6 +21,7 @@ LocationConfig &LocationConfig::operator=(LocationConfig const &other)
         cgi_extension = other.cgi_extension;
         cgi_path = other.cgi_path;
         upload_dir = other.upload_dir;
+		returnDirective = other.returnDirective;
     }
     return *this;
 }
@@ -123,3 +124,4 @@ std::string LocationConfig::getReturnDirective() const
 {
 	return (this->returnDirective);
 }
+

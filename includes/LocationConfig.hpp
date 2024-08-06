@@ -35,6 +35,7 @@ public:
     std::map<std::string, std::string> getCgiPaths() const;
     std::string getUploadDir() const;
     std::string getReturnDirective() const;
+ 
 
 private:
 
