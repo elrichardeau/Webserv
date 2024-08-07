@@ -9,6 +9,11 @@ std::string itostr(int nb) {
 	return str;
 }
 
+void Requests::receiveBody(const std::string &buffBody) {
+	this->_body = buffBody;
+	std::cout << _body << std::endl;
+}
+
 std::vector<std::string> split(std::string buf, const std::string &find) {
 	std::vector<std::string> vector;
 	if (buf.find(find) == std::string::npos) {
@@ -342,6 +347,9 @@ std::vector<std::string> Requests::createCgiEnv() {
 	}
 	return env;
 }
+
+std::string Requests::getRequestContentType() const {return this->_requestContentType;}
+
 
 std::string  Requests::execCgi(const std::string& scriptType) {
 	int childPid;

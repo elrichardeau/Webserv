@@ -10,7 +10,7 @@
 #include "Requests.hpp"
 
 #define MAX_EVENTS 10
-#define BUF_SIZE 10000
+#define BUF_SIZE 1024
 
 class ServerManager {
 
