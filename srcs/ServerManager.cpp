@@ -104,6 +104,8 @@ void ServerManager::handleClientSocket(epoll_event event) {
 			compareClientSocket(event.data.fd, 1);
 		else {
 			std::cout << buffer << std::endl;
+			std::cout << "BUFFER size = " << strlen(buffer) << std::endl;
+			std::cout << "========================DELIM==================================" << std::endl;
 			Requests req(buffer, this->_servers, serverSocket);
 			std::string response = req.getResponse();
 			if (response == "")

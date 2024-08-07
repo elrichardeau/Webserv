@@ -50,6 +50,7 @@ class Requests {
 		std::string _cgiPathPy;
 		std::string _cgiPathPhp;
 		std::string _body;
+		std::string _requestContentType;
 
 		void getQuery();
 		void checkPage();
@@ -71,7 +72,8 @@ class Requests {
 		void setCgiPathPy(const std::string &path);
 		std::string getCgiPathPhp() const;
 		void setCgiPathPhp(const std::string &path);
-
+		std::string getRequestContentType() const;
+		std::string doUpload();
 };
 
 std::string itostr(int nb);

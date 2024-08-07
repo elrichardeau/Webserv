@@ -224,6 +224,7 @@ Requests::Requests(const std::string &buf, std::vector<Server> manager, int serv
 		this->_protocol = request["Protocol"];
 		this->_accept = getAccept(request["Accept"]);
 		this->_body = request["Body"];
+		this->_requestContentType = request["Content-Type"];
 		getQuery();
 		setCgiPathPy(extractCgiPathPy());
 		setCgiPathPhp(extractCgiPathPhp());
@@ -270,7 +271,6 @@ void Requests::checkPage() {
 		if (this->_path[this->_path.size() - 1] != '/')
 			slash = "/";
 		this->_path = this->_path + slash + "index.html";
-
 	}
 	if (access(this->_path.c_str(), F_OK))
 		this->_statusCode = NOT_FOUND;
@@ -338,96 +338,10 @@ std::vector<std::string> Requests::createCgiEnv() {
 		exportVar(env, "QUERY_STRING", this->_query);
 	else if (!this->_method.compare("POST")) {
 		exportVar(env, "CONTENT_LENGTH", itostr(this->_body.size()));
-		exportVar(env, "CONTENT_TYPE", "application/x-www-form-urlencoded");
+		exportVar(env, "CONTENT_TYPE", "application/x-www-form-urlencoded"); //todo _contentTypeRequest
 	}
 	return env;
 }
-
-
-// std::string Requests::execCgi(const std::string& scriptType) {
-//     int childPid;
-//     int childValue;
-//     int fd[2];
-//     int fdBody[2];
-//     const char *scriptInterpreter;
-
-//     if (pipe(fd) == -1) {
-//         std::cerr << "Error: Failed to create pipe for CGI stdout." << std::endl;
-//         return this->_statusCode = 500, setErrorPage();
-//     }
-//     childPid = fork();
-//     if (childPid == -1) {
-//         std::cerr << "Error: Failed to fork process for CGI." << std::endl;
-//         return this->_statusCode = 500, setErrorPage();
-//     }
-//     if (!this->_method.compare("POST")) {
-//         if (pipe(fdBody) == -1) {
-//             std::cerr << "Error: Failed to create pipe for CGI stdin." << std::endl;
-//             return this->_statusCode = 500, setErrorPage();
-//         }
-//         if (write(fdBody[1], this->_body.c_str(), static_cast<int>(this->_body.size())) == -1) {
-//             std::cerr << "Error: Failed to write POST body to pipe." << std::endl;
-//             return this->_statusCode = 500, setErrorPage();
-//         }
-//         close(fdBody[1]);
-//     }
-
-//     if (!childPid) {
-//         if (!this->_method.compare("POST")) {
-//             // close(fdBody[1]);
-//             if (dup2(fdBody[0], STDIN_FILENO) == -1) {
-//                 std::cerr << "Error: Failed to duplicate fdBody[0] to STDIN." << std::endl;
-//                 exit(EXIT_FAILURE);
-//             }
-//             close(fdBody[0]);
-//         }
-//         close(fd[0]);
-//         if (dup2(fd[1], STDOUT_FILENO) == -1) {
-//             std::cerr << "Error: Failed to duplicate fd[1] to STDOUT." << std::endl;
-//             exit(EXIT_FAILURE);
-//         }
-//         close(fd[1]);
-
-//         if (!scriptType.compare("py"))
-//             scriptInterpreter = this->_cgiPathPy.c_str();
-//         else
-//             scriptInterpreter = this->_cgiPathPhp.c_str();
-
-//         char **env = vectorToCharArray(createCgiEnv());
-
-//         char *args[] = { const_cast<char*>(scriptInterpreter), const_cast<char*>(_path.c_str()), NULL };
-//         execve(scriptInterpreter, args, env);
-//         std::cerr << "Error: execve failed for " << scriptInterpreter << std::endl;
-//         delete [] env;
-//         exit(EXIT_FAILURE);
-//     }
-
-//     if (waitpid(childPid, &childValue, WUNTRACED) == -1) {
-//         std::cerr << "Error: waitpid failed." << std::endl;
-//         return close(fd[0]), close(fd[1]), this->_statusCode = 500, setErrorPage();
-//     }
-
-//     if (WEXITSTATUS(childValue) == 1) {
-//         std::cerr << "Error: CGI script exited with status 1." << std::endl;
-//         return close(fd[0]), close(fd[1]), this->_statusCode = 500, setErrorPage();
-//     }
-
-//     if (!this->_method.compare("POST")) {
-//         close(fdBody[0]);
-//         // close(fdBody[1]);
-//     }
-//     close(fd[1]);
-
-//     std::string scriptContent = readFromPipe(fd[0]);
-//     close(fd[0]);
-
-//     if (this->_statusCode != OK)
-//         return setErrorPage();
-
-//     std::string response = "HTTP/1.1 200 OK\n\n";
-//     response.append(scriptContent + "\n");
-//     return setResponseScript(scriptContent, "OK") + scriptContent;
-// }
 
 std::string  Requests::execCgi(const std::string& scriptType) {
 	int childPid;
@@ -489,11 +403,26 @@ std::string  Requests::execCgi(const std::string& scriptType) {
 	return response;
 }
 
+std::string Requests::doUpload() {
+	std::string uploadDir = "uploadDir";
+	if (uploadDir.empty())
+		return getPage("/uploadDirNotFound.html", setResponse("OK"));
+	if (access(uploadDir.c_str(), F_OK | W_OK) == -1) {
+		this->_statusCode = 404;
+		return setErrorPage();	
+	}
+
+	this->_statusCode = 413;
+	return setErrorPage();
+}
+
 std::string Requests::getResponse() {
 	if (!this->_paramValid)
 		return "";
 	if (this->_statusCode == OK)
 		checkPage();
+	// if (this->_statusCode == OK && this->_method == "POST" && this->_requestContentType == "multipart/form-data")
+	// 	return doUpload();
 	if (this->_statusCode == OK) {
 		std::vector<std::string> words = split(this->_path, ".");
 		if (words.size() == 1) {
