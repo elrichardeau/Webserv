@@ -45,6 +45,11 @@ class Requests {
 		std::string _protocol;
 		std::vector<std::string> _accept;
 		std::vector<std::string> _allowMethod;
+		std::string _index;
+		bool _autoIndex;
+		std::string _root;
+		std::string _uploadDir;
+		std::string _redirection;
 		std::string _contentType;
 		Server _servParam;
 		bool _paramValid;
@@ -59,19 +64,15 @@ class Requests {
 		std::string setResponse(const std::string &codeName);
 		Server findServerWithSocket(std::vector<Server> manager, int serverSocket, std::string serverName);
 		std::string getBody(std::vector<std::string> bufSplitted, size_t i, std::map<std::string, std::string> request);
-		std::string getRootPath(const std::string &path);
+		void getRootPath(const std::string &path);
+		void setPath();
+		void checkAllowMethod();
 
 		std::string execCgi(const std::string& scriptType);
 		std::string readFromPipe(int pipeFd);
 		char** vectorToCharArray(const std::vector<std::string> &vector);
 	    std::vector<std::string> createCgiEnv();
-		std::string getCgiPathPy() const;
-		std::string extractCgiPathPy() const;
-		std::string extractCgiPathPhp() const;
 		std::string setResponseScript(const std::string &scriptResult, const std::string &codeName);
-		void setCgiPathPy(const std::string &path);
-		std::string getCgiPathPhp() const;
-		void setCgiPathPhp(const std::string &path);
 };
 
 std::string itostr(int nb);
