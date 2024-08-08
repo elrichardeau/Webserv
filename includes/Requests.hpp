@@ -35,8 +35,9 @@ class Requests {
 		Requests(const std::string &buf, std::vector<Server> manager, int serverSocket);
 		~Requests();
 		std::string getResponse();
+
+		void receiveBody(const std::string &buffBody);
 		std::string getRequestContentType() const;
-    	void receiveBody(const std::string &body);
 
 	private :
 
@@ -74,7 +75,7 @@ class Requests {
 		void setCgiPathPy(const std::string &path);
 		std::string getCgiPathPhp() const;
 		void setCgiPathPhp(const std::string &path);
-		//std::string doUpload();
+		std::string doUpload();
 };
 
 std::string itostr(int nb);

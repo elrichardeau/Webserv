@@ -123,11 +123,17 @@ void ServerManager::handleClientSocket(epoll_event event) {
 			if (!req.getRequestContentType().compare(0, 19, "multipart/form-data")) {
 				while ((bytesRead = recv(event.data.fd, buffer, BUF_SIZE, 0)) > 0) {
 					buffer[bytesRead] = '\0';
+					std::cout << "BUFFER AFTER RECV " << buffer << std::endl;
 					bodyData.append(buffer);
+					std::cout << "find = " << bodyData.find(req.getRequestContentType().substr(31, req.getRequestContentType().size())) << std::endl;
+					std::cout <<  "getrequestcontentblabla = " << req.getRequestContentType().substr(31, req.getRequestContentType().size()) << std::endl;
 					if (bodyData.find(req.getRequestContentType().substr(31, req.getRequestContentType().size())) != std::string::npos)
-						break;
+						if (bodyData.find(req.getRequestContentType().substr(31, req.getRequestContentType().size()), req.getRequestContentType().size()) != std::string::npos)
+							break;
 					bzero(buffer, sizeof(buffer));
 				}
+				if (bytesRead <= 0)
+					compareClientSocket(event.data.fd, 1);
 			}
 			std::cout << "LES BIG BOSS" << std::endl;
 			req.receiveBody(bodyData);

@@ -9,6 +9,11 @@ std::string itostr(int nb) {
 	return str;
 }
 
+void Requests::receiveBody(const std::string &buffBody) {
+	this->_body = buffBody;
+	std::cout << _body << std::endl;
+}
+
 std::vector<std::string> split(std::string buf, const std::string &find) {
 	std::vector<std::string> vector;
 	if (buf.find(find) == std::string::npos) {
@@ -273,7 +278,6 @@ void Requests::checkPage() {
 		if (this->_path[this->_path.size() - 1] != '/')
 			slash = "/";
 		this->_path = this->_path + slash + "index.html";
-
 	}
 	if (access(this->_path.c_str(), F_OK))
 		this->_statusCode = NOT_FOUND;
@@ -341,10 +345,13 @@ std::vector<std::string> Requests::createCgiEnv() {
 		exportVar(env, "QUERY_STRING", this->_query);
 	else if (!this->_method.compare("POST")) {
 		exportVar(env, "CONTENT_LENGTH", itostr(this->_body.size()));
-		exportVar(env, "CONTENT_TYPE", "x-www-form-urlencoded");
+		exportVar(env, "CONTENT_TYPE", "application/x-www-form-urlencoded"); //todo _contentTypeRequest
 	}
 	return env;
 }
+
+std::string Requests::getRequestContentType() const {return this->_requestContentType;}
+
 
 std::string  Requests::execCgi(const std::string& scriptType) {
 	int childPid;
@@ -406,76 +413,18 @@ std::string  Requests::execCgi(const std::string& scriptType) {
 	return response;
 }
 
-/*
-void parseMultipartFormData(const std::string& boundary, const std::string& body, std::string& fileName, std::string& fileContent)
-{
-    std::string delimiter = "--" + boundary;
-    size_t pos = 0;
-    std::string token;
-    std::string bodyCopy = body; // Copie du corps de la requête pour éviter de modifier l'original
-
-    while ((pos = bodyCopy.find(delimiter)) != std::string::npos) {
-        token = bodyCopy.substr(0, pos);
-        if (token.find("Content-Disposition: form-data; name=\"file\"; filename=") != std::string::npos) {
-            size_t fileNamePos = token.find("filename=") + 10;
-            fileName = token.substr(fileNamePos, token.find("\"", fileNamePos) - fileNamePos);
-
-            size_t fileContentPos = token.find("\r\n\r\n") + 4;
-            fileContent = token.substr(fileContentPos, token.length() - fileContentPos - 2);
-        }
-        bodyCopy.erase(0, pos + delimiter.length() + 2);
-    }
-}
-
 
 std::string Requests::doUpload() {
-    //std::string uploadDir = "uploadDir"; // Répertoire de téléversement
+	std::string uploadDir = "uploadDir";
+	if (uploadDir.empty())
+		return getPage("/uploadDirNotFound.html", setResponse("OK"));
+	if (access(uploadDir.c_str(), F_OK | W_OK) == -1) {
+		this->_statusCode = 404;
+		return setErrorPage();	
+	}
 
-    if (this->_requestContentType.empty()) {
-        this->_statusCode = 404;
-        return getPage("/uploadDirNotFound.html", setResponse("Not Found"));
-    }
-
-    struct stat st;
-    if (stat(this->_requestContentType.c_str(), &st) != 0 || !S_ISDIR(st.st_mode)) {
-        this->_statusCode = 404;
-        return getPage("/uploadDirNotFound.html", setResponse("Not Found"));
-    }
-
-    if (access(this->_requestContentType.c_str(), W_OK) != 0) {
-        this->_statusCode = 403;
-        return setErrorPage();
-    }
-
-    std::string boundary = this->_requestContentType;
-    boundary = boundary.substr(boundary.find("boundary=") + 9);
-
-    std::string fileName, fileContent;
-    parseMultipartFormData(boundary, this->_body, fileName, fileContent);
-
-    std::string filePath = this->_requestContentType + "/" + fileName;
-    std::ofstream outFile(filePath.c_str(), std::ios::binary);
-    if (!outFile.is_open()) {
-        this->_statusCode = 500;
-        return setErrorPage();
-    }
-
-    outFile.write(fileContent.c_str(), fileContent.size());
-    outFile.close();
-
-    return "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\nFile uploaded successfully.";
-}
-*/
-
-std::string Requests::getRequestContentType() const 
-{ 
-	return this->_requestContentType; 
-}
-
-void Requests::receiveBody(const std::string &body) 
-{ 
-	this->_body = body;
-	std::cout << _body << std::endl;
+	this->_statusCode = 413;
+	return setErrorPage();
 }
 
 std::string Requests::getResponse() {
@@ -483,6 +432,8 @@ std::string Requests::getResponse() {
 		return "";
 	if (this->_statusCode == OK)
 		checkPage();
+	// if (this->_statusCode == OK && this->_method == "POST" && this->_requestContentType == "multipart/form-data")
+	// 	return doUpload();
 	if (this->_statusCode == OK) {
 		std::vector<std::string> words = split(this->_path, ".");
 		if (words.size() == 1) {
