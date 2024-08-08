@@ -35,6 +35,7 @@ class Requests {
 		Requests(const std::string &buf, std::vector<Server> manager, int serverSocket);
 		~Requests();
 		std::string getResponse();
+
 		void receiveBody(const std::string &buffBody);
 		std::string getRequestContentType() const;
 

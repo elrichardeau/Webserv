@@ -120,12 +120,16 @@ void Config::index(std::vector<std::string> &tokens, LocationConfig &currentLoca
 {
     if (tokens[0] == "index")
     {
+        std::vector<std::string> idx;
         if (tokens.size() < 2)
             throw InvalidConfig("Error: No index specified.");
-        const std::string &path = tokens[1];
-        if (path[0] != '/')
-            throw InvalidConfig("Error: Index path must start with '/'.");
-        currentLocation.setIndex(tokens[1]);
+        for (size_t i = 1; i < tokens.size(); ++i)
+        {
+            if (tokens[i][0] != '/')
+                throw InvalidConfig("Error: Index path must start with '/'.");
+            idx.push_back(tokens[i]);
+        }
+        currentLocation.setIndex(idx);
     }
 }
 

@@ -27,6 +27,8 @@ std::vector<std::string> split(std::string buf, const std::string &find) {
 	return vector;
 }
 
+
+
 bool isSyntaxGood(std::vector<std::string> &request) {
 	size_t find;
 	bool body = 0;
@@ -410,6 +412,7 @@ std::string  Requests::execCgi(const std::string& scriptType) {
 	return setResponseScript(scriptContent, "OK") + scriptContent;
 	return response;
 }
+
 
 std::string Requests::doUpload() {
 	std::string uploadDir = "uploadDir";

@@ -18,7 +18,7 @@ public:
     void setUploadDir(const std::string &dir);
     void setReturnDirective(const std::string &directive);
     void setPath(const std::string &p);
-    void setIndex(const std::string &idx);
+    void setIndex(std::vector<std::string>  &idx);
     void setAutoIndex(bool autoidx);
     void setRoot(const std::string &rt);
     void setAllowMethods(const std::vector<std::string> &methods); 
@@ -28,7 +28,7 @@ public:
 
     std::string getPath() const;
     std::vector<std::string> getAllowMethods() const;
-    std::string getIndex() const;
+    std::vector<std::string> getIndex() const;
     bool getautoIndex() const;
     std::string getRoot() const;
     std::vector<std::string> getCgiExtensions() const;
@@ -41,7 +41,7 @@ private:
 
     std::string path;
     std::vector<std::string> allowMethods;
-    std::string index;
+    std::vector<std::string> index;
     bool autoindex;
     std::string root;
     std::vector<std::string> cgi_extension;

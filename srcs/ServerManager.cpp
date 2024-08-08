@@ -91,6 +91,7 @@ int ServerManager::compareClientSocket(int eventFd, bool forClose) {
     return -1;
 }
 
+
 void ServerManager::handleClientSocket(epoll_event event) {
 	char buffer[BUF_SIZE] = {0};
 	int serverSocket = compareClientSocket(event.data.fd, 0);
@@ -144,6 +145,11 @@ void ServerManager::handleClientSocket(epoll_event event) {
 		}
 	}
 }
+
+
+
+
+
 
 std::vector<Server> ServerManager::getServers() const {return this->_servers;}
 const char* ServerManager::SocketFailed::what() const throw() {return "Error: Socket Failed !";}
