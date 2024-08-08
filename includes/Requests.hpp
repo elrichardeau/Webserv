@@ -17,7 +17,7 @@
 
 enum StatusCode {
 	OK = 200,
-	MOVED_PERMANENTLY = 301,
+	FOUND = 302,
 	BAD_REQUEST = 400,
 	FORBIDDEN = 403,
 	NOT_FOUND = 404,
@@ -66,7 +66,8 @@ class Requests {
 		std::string getBody(std::vector<std::string> bufSplitted, size_t i, std::map<std::string, std::string> request);
 		void getRootPath(const std::string &path);
 		void setPath();
-		void checkAllowMethod();
+		bool isMethodAllowed();
+		void setContentType();
 
 		std::string execCgi(const std::string& scriptType);
 		std::string readFromPipe(int pipeFd);

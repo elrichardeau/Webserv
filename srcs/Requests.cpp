@@ -216,16 +216,23 @@ void Requests::getRootPath(const std::string &path) {
 }
 
 void Requests::setPath() {
+	if (this->_path == "/favicon.ico") {
+		this->_statusCode = OK;
+		this->_path = "./pages/favicon.ico";
+		return;
+	}
 	if (this->_redirection != "") {
 		std::vector<std::string> redirection = split(this->_redirection, " ");
-		std::cout << redirection[0] << ":" << redirection[1] << std::endl;
 		this->_statusCode = std::atoi(redirection[0].c_str());
+		if (this->_statusCode != FOUND) {
+			this->_statusCode = NOT_IMPLEMENTED;
+			return;
+		}
 		this->_path = "." + redirection[1];
 		if (access(this->_path.c_str(), F_OK))
 			this->_statusCode = NOT_FOUND;
 		else if (access(this->_path.c_str(), R_OK))
 			this->_statusCode = FORBIDDEN;
-		std::cout << this->_statusCode << std::endl;
 		return;
 	}
 	this->_path = "." + this->_root + this->_path;
@@ -259,10 +266,39 @@ void Requests::setPath() {
 	this->_statusCode = OK;
 }
 
-void Requests::checkAllowMethod() {
+bool Requests::isMethodAllowed() {
 	for (size_t i = 0; i < this->_allowMethod.size(); i++) {
 		if (this->_allowMethod[i] == this->_method)
+			return true;
+	}
+	return false;
+}
+
+void Requests::setContentType() {
+	bool all = false;
+	size_t find = this->_path.find_last_of(".");
+	if (find != std::string::npos) {
+		std::string extension = this->_path.substr(find + 1, this->_path.size());
+		if (extension == "php" || extension == "py") {
+			this->_contentType = "text/html";
 			return;
+		}
+		for (unsigned int i = 0; i < this->_accept.size(); i++) {
+			size_t find = this->_accept[i].find("/");
+			if (find != std::string::npos) {
+				std::string type = this->_accept[i].substr(find + 1, this->_accept[i].size());
+				if (extension == type) {
+					this->_contentType = this->_accept[i];
+					return;
+				}
+				else if (type == "*")
+					all = true;
+			}
+		}
+		if (all && extension == "ico") {
+			this->_contentType = "image/x-icon";
+			return;
+		}
 	}
 	this->_statusCode = NOT_ACCEPTABLE;
 }
@@ -290,63 +326,29 @@ Requests::Requests(const std::string &buf, std::vector<Server> manager, int serv
 		}
 		this->_paramValid = 1;
 		this->_servParam = findServerWithSocket(manager, serverSocket, request["Host"]);
-		this->_method = request["Method"];
-		getRootPath(request["Path"]);
-		setPath();
-		checkAllowMethod();
-		this->_protocol = request["Protocol"];
-		this->_accept = getAccept(request["Accept"]);
-		this->_body = request["Body"];
-		if (this->_protocol != "HTTP/1.1")
-			this->_statusCode = HTTP_VERSION_NOT_SUPPORTED;
-	}
-}
-
-Requests::~Requests() {}
-
-bool Requests::checkExtension() {
-	if (this->_path == "./pages/favicon.ico") {
-		this->_contentType = "image/x-icon";
-		return true;
-	}
-	size_t find = this->_path.find_last_of(".");
-	if (find != std::string::npos) {
-		std::string extension = this->_path.substr(find + 1, this->_path.size());
-		if (extension == "php" || extension == "py") {
-			this->_contentType = "text/html";
-			return true;
-		}
-		for (unsigned int i = 0; i < this->_accept.size(); i++) {
-			size_t find = this->_accept[i].find("/");
-			if (find != std::string::npos) {
-				std::string type = this->_accept[i].substr(find + 1, this->_accept[i].size());
-				if (extension == type) {
-					this->_contentType = this->_accept[i];
-					return true;
+		if (this->_paramValid) {
+			this->_protocol = request["Protocol"];
+			if (this->_protocol != "HTTP/1.1")
+				this->_statusCode = HTTP_VERSION_NOT_SUPPORTED;
+			else {
+				getRootPath(request["Path"]);
+				this->_method = request["Method"];
+				if (!isMethodAllowed())
+					this->_statusCode = METHOD_NOT_ALLOWED;
+				else {
+					setPath();
+					if (this->_statusCode == OK || this->_statusCode == FOUND) {
+						this->_accept = getAccept(request["Accept"]);
+						setContentType();
+						this->_body = request["Body"];
+					}
 				}
 			}
 		}
 	}
-	return false;
 }
 
-void Requests::checkPage() {
-	DIR *dir = opendir(this->_path.c_str());
-	if (dir != NULL) {
-		closedir(dir);
-		std::string slash = "";
-		if (this->_path[this->_path.size() - 1] != '/')
-			slash = "/";
-		this->_path = this->_path + slash + "index.html";
-
-	}
-	if (access(this->_path.c_str(), F_OK))
-		this->_statusCode = NOT_FOUND;
-	else if (access(this->_path.c_str(), R_OK))
-		this->_statusCode = FORBIDDEN;
-	else if (!checkExtension())
-		this->_statusCode = NOT_ACCEPTABLE;
-}
+Requests::~Requests() {}
 
 std::string getPage(std::string filename, std::string responseStatus) {
 	std::ifstream fd(filename.c_str());
@@ -474,9 +476,7 @@ std::string  Requests::execCgi(const std::string& scriptType) {
 std::string Requests::getResponse() {
 	if (!this->_paramValid)
 		return "";
-	if (this->_statusCode == OK)
-		checkPage();
-	if (this->_statusCode == OK) {
+	if (this->_statusCode == OK || this->_statusCode == FOUND) {
 		std::vector<std::string> words = split(this->_path, ".");
 		if (words.size() == 1) {
 			this->_statusCode = BAD_REQUEST;
@@ -489,6 +489,8 @@ std::string Requests::getResponse() {
 			}
 			return execCgi(words[words.size() - 1]);
 		}
+		if (this->_statusCode == FOUND)
+			return getPage(this->_path, setResponse("Found"));
 		return getPage(this->_path, setResponse("OK"));
 	}
 	return setErrorPage();
@@ -536,6 +538,11 @@ std::string Requests::setResponseScript(const std::string &scriptResult, const s
 	response.append("\n");
 	response.append("Content-Location: " + this->_path.substr(1, this->_path.size()) + "\n");
 	response.append("Content-Type: " + this->_contentType + "\n");
+	time_t actualTime = time(NULL);
+	response.append("Date: ");
+	response.append(ctime(&actualTime));
+	response.append("Last-Modified: ");
+	response.append(ctime(&actualTime));
 	response.append("Server: Webserv\n");
 	response.append("\n");
 	return response;
