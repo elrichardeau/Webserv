@@ -22,6 +22,8 @@ std::vector<std::string> split(std::string buf, const std::string &find) {
 	return vector;
 }
 
+
+
 bool isSyntaxGood(std::vector<std::string> &request) {
 	size_t find;
 	bool body = 0;
@@ -224,6 +226,7 @@ Requests::Requests(const std::string &buf, std::vector<Server> manager, int serv
 		this->_protocol = request["Protocol"];
 		this->_accept = getAccept(request["Accept"]);
 		this->_body = request["Body"];
+		this->_requestContentType = request["Content-Type"];
 		getQuery();
 		setCgiPathPy(extractCgiPathPy());
 		setCgiPathPhp(extractCgiPathPhp());
@@ -401,6 +404,78 @@ std::string  Requests::execCgi(const std::string& scriptType) {
         response.append(scriptContent + "\n");
 	return setResponseScript(scriptContent, "OK") + scriptContent;
 	return response;
+}
+
+/*
+void parseMultipartFormData(const std::string& boundary, const std::string& body, std::string& fileName, std::string& fileContent)
+{
+    std::string delimiter = "--" + boundary;
+    size_t pos = 0;
+    std::string token;
+    std::string bodyCopy = body; // Copie du corps de la requête pour éviter de modifier l'original
+
+    while ((pos = bodyCopy.find(delimiter)) != std::string::npos) {
+        token = bodyCopy.substr(0, pos);
+        if (token.find("Content-Disposition: form-data; name=\"file\"; filename=") != std::string::npos) {
+            size_t fileNamePos = token.find("filename=") + 10;
+            fileName = token.substr(fileNamePos, token.find("\"", fileNamePos) - fileNamePos);
+
+            size_t fileContentPos = token.find("\r\n\r\n") + 4;
+            fileContent = token.substr(fileContentPos, token.length() - fileContentPos - 2);
+        }
+        bodyCopy.erase(0, pos + delimiter.length() + 2);
+    }
+}
+
+
+std::string Requests::doUpload() {
+    //std::string uploadDir = "uploadDir"; // Répertoire de téléversement
+
+    if (this->_requestContentType.empty()) {
+        this->_statusCode = 404;
+        return getPage("/uploadDirNotFound.html", setResponse("Not Found"));
+    }
+
+    struct stat st;
+    if (stat(this->_requestContentType.c_str(), &st) != 0 || !S_ISDIR(st.st_mode)) {
+        this->_statusCode = 404;
+        return getPage("/uploadDirNotFound.html", setResponse("Not Found"));
+    }
+
+    if (access(this->_requestContentType.c_str(), W_OK) != 0) {
+        this->_statusCode = 403;
+        return setErrorPage();
+    }
+
+    std::string boundary = this->_requestContentType;
+    boundary = boundary.substr(boundary.find("boundary=") + 9);
+
+    std::string fileName, fileContent;
+    parseMultipartFormData(boundary, this->_body, fileName, fileContent);
+
+    std::string filePath = this->_requestContentType + "/" + fileName;
+    std::ofstream outFile(filePath.c_str(), std::ios::binary);
+    if (!outFile.is_open()) {
+        this->_statusCode = 500;
+        return setErrorPage();
+    }
+
+    outFile.write(fileContent.c_str(), fileContent.size());
+    outFile.close();
+
+    return "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\nFile uploaded successfully.";
+}
+*/
+
+std::string Requests::getRequestContentType() const 
+{ 
+	return this->_requestContentType; 
+}
+
+void Requests::receiveBody(const std::string &body) 
+{ 
+	this->_body = body;
+	std::cout << _body << std::endl;
 }
 
 std::string Requests::getResponse() {
