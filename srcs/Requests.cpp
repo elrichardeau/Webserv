@@ -176,6 +176,9 @@ std::string Requests::getBody(std::vector<std::string> bufSplitted, size_t index
 }
 
 void Requests::getRootPath(const std::string &path) {
+	this->_urlPath = path;
+	if (this->_urlPath.find_last_of("/") != this->_urlPath.size() - 1)
+		this->_urlPath.append("/");
 	this->_path = path;
 	getQuery();
 	std::vector<LocationConfig> tmp = this->_servParam.getLocations();
@@ -201,6 +204,7 @@ void Requests::getRootPath(const std::string &path) {
 				else if (it->first == ".php")
 					this->_cgiPathPhp = it->second;
 			}
+			this->_autoIndexFile = "";
 			return;
 		}
 	}
@@ -213,6 +217,37 @@ void Requests::getRootPath(const std::string &path) {
 	this->_redirection = "";
 	this->_cgiPathPy = "";
 	this->_cgiPathPhp = "";
+	this->_autoIndexFile = "";
+}
+
+void Requests::createAutoIndexFile() {
+	std::vector<std::string> response;
+	DIR *dir = opendir(this->_path.c_str());
+	if (dir == NULL) {
+		this->_statusCode = INTERNAL_SERVER_ERROR;
+		return;
+	}
+	for (dirent *dirData = readdir(dir); dirData != NULL; dirData = readdir(dir)) {
+		response.push_back(dirData->d_name);
+	}
+	std::sort(response.begin(), response.end());
+	this->_autoIndexFile.append("<!DOCTYPE html>");
+	this->_autoIndexFile.append("<html>");
+	this->_autoIndexFile.append("<head>");
+	this->_autoIndexFile.append("<meta charset=\"utf-8\" />");
+	this->_autoIndexFile.append("<html lang=\"en\"></html>");
+	this->_autoIndexFile.append("<link rel=\"stylesheet\" type=\"text/css\" href=\"stylesAutoIndex.css\" />");
+	this->_autoIndexFile.append("<title>" + this->_path + "</title>");
+	this->_autoIndexFile.append("</head>");
+	this->_autoIndexFile.append("<body>");
+	this->_autoIndexFile.append("<h1>" + this->_path + "</h1>");
+	this->_autoIndexFile.append("<ul>");
+	for (size_t i = 0; i < response.size(); i++) {
+		this->_autoIndexFile.append("<li><a href=" + this->_urlPath + response[i] + ">" + response[i] + "</a></li>");
+	}
+	this->_autoIndexFile.append("</ul>");
+	this->_autoIndexFile.append("</body>");
+	this->_autoIndexFile.append("</html>");
 }
 
 void Requests::setPath() {
@@ -246,8 +281,9 @@ void Requests::setPath() {
 				return;
 			}
 		}
-		if (this->_autoIndex && 0) {
-			// this->_statusCode = OK;
+		if (this->_autoIndex) {
+			this->_statusCode = OK;
+			createAutoIndexFile();
 			return;
 		}
 		else {
@@ -275,6 +311,10 @@ bool Requests::isMethodAllowed() {
 }
 
 void Requests::setContentType() {
+	if (this->_autoIndexFile != "") {
+		this->_contentType = "text/html";
+		return;
+	}
 	bool all = false;
 	size_t find = this->_path.find_last_of(".");
 	if (find != std::string::npos) {
@@ -297,6 +337,10 @@ void Requests::setContentType() {
 		}
 		if (all && extension == "ico") {
 			this->_contentType = "image/x-icon";
+			return;
+		}
+		else if (all && extension == "css") {
+			this->_contentType = "text/css";
 			return;
 		}
 	}
@@ -477,6 +521,8 @@ std::string Requests::getResponse() {
 	if (!this->_paramValid)
 		return "";
 	if (this->_statusCode == OK || this->_statusCode == FOUND) {
+		if (this->_autoIndexFile != "")
+			return setResponseScript(this->_autoIndexFile, "OK") + this->_autoIndexFile;
 		std::vector<std::string> words = split(this->_path, ".");
 		if (words.size() == 1) {
 			this->_statusCode = BAD_REQUEST;

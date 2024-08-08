@@ -40,6 +40,7 @@ class Requests {
 
 		int _statusCode;
 		std::string _method;
+		std::string _urlPath;
 		std::string _path;
 		std::string _query;
 		std::string _protocol;
@@ -56,10 +57,9 @@ class Requests {
 		std::string _cgiPathPy;
 		std::string _cgiPathPhp;
 		std::string _body;
+		std::string _autoIndexFile;
 
 		void getQuery();
-		void checkPage();
-		bool checkExtension();
 		std::string setErrorPage();
 		std::string setResponse(const std::string &codeName);
 		Server findServerWithSocket(std::vector<Server> manager, int serverSocket, std::string serverName);
@@ -68,6 +68,7 @@ class Requests {
 		void setPath();
 		bool isMethodAllowed();
 		void setContentType();
+		void createAutoIndexFile();
 
 		std::string execCgi(const std::string& scriptType);
 		std::string readFromPipe(int pipeFd);
