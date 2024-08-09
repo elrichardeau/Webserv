@@ -182,25 +182,176 @@ std::string Requests::getBody(std::vector<std::string> bufSplitted, size_t index
 	return "";
 }
 
-std::string Requests::getRootPath(const std::string &path) {
-	if (path == "/favicon.ico")
-		return "./pages/favicon.ico";
-	// std::vector<LocationConfig> tmp = this->_servParam.getLocations();
-	// for (size_t i = 0; i < tmp.size(); i++) {
-	// 	if (tmp[i].getPath() == path)
-	// 		std::cout << "Path found : " << path << std::endl; 
-	// }
-	// for (size_t i = 0; i < tmp.size(); i++) {
-	// 	std::cout << "Path dir : " << tmp[i].getPath() << "?" << std::endl;
-	// 	std::cout << "First method : " << tmp[i].getAllowMethods()[0] << "?" << std::endl;
-	// 	std::cout << "Index : " << tmp[i].getIndex() << "?" << std::endl;
-	// 	std::cout << "Auto index : " << tmp[i].getautoIndex() << "?" << std::endl;
-	// 	std::cout << "Root : " << tmp[i].getRoot() << "?" << std::endl;
-	// 	std::cout << "Upload dir : " << tmp[i].getUploadDir() << "?" << std::endl;
-	// 	std::cout << "Return dir : " << tmp[i].getReturnDirective() << "?" << std::endl;
-	// 	std::cout << std::endl;
-	// }
-	return "." + this->_servParam.getRoot() + path;
+void Requests::getRootPath(const std::string &path) {
+	this->_urlPath = path;
+	if (this->_urlPath.find_last_of("/") != this->_urlPath.size() - 1)
+		this->_urlPath.append("/");
+	this->_path = path;
+	getQuery();
+	std::vector<LocationConfig> tmp = this->_servParam.getLocations();
+	std::string firstPath;
+	if (path == "/")
+		firstPath = path + "/";
+	else
+		firstPath = "/" + split(path, "/")[1] + "/";
+	for (size_t i = 0; i < tmp.size(); i++) {
+		if (!(tmp[i].getPath() + "/").compare(0, firstPath.size(), firstPath)) {
+			this->_allowMethod = tmp[i].getAllowMethods();
+			this->_index = tmp[i].getIndex();
+			this->_autoIndex = tmp[i].getautoIndex();
+			this->_root = tmp[i].getRoot();
+			this->_uploadDir = tmp[i].getUploadDir();
+			this->_redirection = tmp[i].getReturnDirective();
+			this->_cgiPathPy = "";
+			this->_cgiPathPhp = "";
+			std::map<std::string, std::string> temp = tmp[i].getCgiPaths();
+			for (std::map<std::string, std::string>::iterator it = temp.begin(); it != temp.end(); it++) {
+				if (it->first == ".py")
+					this->_cgiPathPy = it->second;
+				else if (it->first == ".php")
+					this->_cgiPathPhp = it->second;
+			}
+			this->_autoIndexFile = "";
+			return;
+		}
+	}
+	this->_allowMethod.push_back("GET");
+	this->_allowMethod.push_back("HEAD");
+	this->_index = "";
+	this->_autoIndex = false;
+	this->_root = this->_servParam.getRoot();
+	this->_uploadDir = "";
+	this->_redirection = "";
+	this->_cgiPathPy = "";
+	this->_cgiPathPhp = "";
+	this->_autoIndexFile = "";
+}
+
+void Requests::createAutoIndexFile() {
+	std::vector<std::string> response;
+	DIR *dir = opendir(this->_path.c_str());
+	if (dir == NULL) {
+		this->_statusCode = INTERNAL_SERVER_ERROR;
+		return;
+	}
+	for (dirent *dirData = readdir(dir); dirData != NULL; dirData = readdir(dir)) {
+		response.push_back(dirData->d_name);
+	}
+	std::sort(response.begin(), response.end());
+	this->_autoIndexFile.append("<!DOCTYPE html>");
+	this->_autoIndexFile.append("<html>");
+	this->_autoIndexFile.append("<head>");
+	this->_autoIndexFile.append("<meta charset=\"utf-8\" />");
+	this->_autoIndexFile.append("<html lang=\"en\"></html>");
+	this->_autoIndexFile.append("<link rel=\"stylesheet\" type=\"text/css\" href=\"stylesAutoIndex.css\" />");
+	this->_autoIndexFile.append("<title>" + this->_path + "</title>");
+	this->_autoIndexFile.append("</head>");
+	this->_autoIndexFile.append("<body>");
+	this->_autoIndexFile.append("<h1>" + this->_path + "</h1>");
+	this->_autoIndexFile.append("<ul>");
+	for (size_t i = 0; i < response.size(); i++) {
+		this->_autoIndexFile.append("<li><a href=" + this->_urlPath + response[i] + ">" + response[i] + "</a></li>");
+	}
+	this->_autoIndexFile.append("</ul>");
+	this->_autoIndexFile.append("</body>");
+	this->_autoIndexFile.append("</html>");
+}
+
+void Requests::setPath() {
+	if (this->_path == "/favicon.ico") {
+		this->_statusCode = OK;
+		this->_path = "./pages/favicon.ico";
+		return;
+	}
+	if (this->_redirection != "") {
+		std::vector<std::string> redirection = split(this->_redirection, " ");
+		this->_statusCode = std::atoi(redirection[0].c_str());
+		if (this->_statusCode != FOUND) {
+			this->_statusCode = NOT_IMPLEMENTED;
+			return;
+		}
+		this->_path = "." + redirection[1];
+		if (access(this->_path.c_str(), F_OK))
+			this->_statusCode = NOT_FOUND;
+		else if (access(this->_path.c_str(), R_OK))
+			this->_statusCode = FORBIDDEN;
+		return;
+	}
+	this->_path = "." + this->_root + this->_path;
+	DIR *dir = opendir(this->_path.c_str());
+	if (dir != NULL) {
+		closedir(dir);
+		if (this->_index != "") {
+			if (!access((this->_path + this->_index).c_str(), F_OK | R_OK)) {
+				this->_path.append(this->_index);
+				this->_statusCode = OK;
+				return;
+			}
+		}
+		if (this->_autoIndex) {
+			this->_statusCode = OK;
+			createAutoIndexFile();
+			return;
+		}
+		else {
+			this->_statusCode = FORBIDDEN;
+			return;
+		}
+	}
+	else if (access(this->_path.c_str(), F_OK)) {
+		this->_statusCode = NOT_FOUND;
+		return;
+	}
+	else if (access(this->_path.c_str(), R_OK)) {
+		this->_statusCode = FORBIDDEN;
+		return;
+	}
+	this->_statusCode = OK;
+}
+
+bool Requests::isMethodAllowed() {
+	for (size_t i = 0; i < this->_allowMethod.size(); i++) {
+		if (this->_allowMethod[i] == this->_method)
+			return true;
+	}
+	return false;
+}
+
+void Requests::setContentType() {
+	if (this->_autoIndexFile != "") {
+		this->_contentType = "text/html";
+		return;
+	}
+	bool all = false;
+	size_t find = this->_path.find_last_of(".");
+	if (find != std::string::npos) {
+		std::string extension = this->_path.substr(find + 1, this->_path.size());
+		if (extension == "php" || extension == "py") {
+			this->_contentType = "text/html";
+			return;
+		}
+		for (unsigned int i = 0; i < this->_accept.size(); i++) {
+			size_t find = this->_accept[i].find("/");
+			if (find != std::string::npos) {
+				std::string type = this->_accept[i].substr(find + 1, this->_accept[i].size());
+				if (extension == type) {
+					this->_contentType = this->_accept[i];
+					return;
+				}
+				else if (type == "*")
+					all = true;
+			}
+		}
+		if (all && extension == "ico") {
+			this->_contentType = "image/x-icon";
+			return;
+		}
+		else if (all && extension == "css") {
+			this->_contentType = "text/css";
+			return;
+		}
+	}
+	this->_statusCode = NOT_ACCEPTABLE;
 }
 
 Requests::Requests(const std::string &buf, std::vector<Server> manager, int serverSocket) {
@@ -226,66 +377,30 @@ Requests::Requests(const std::string &buf, std::vector<Server> manager, int serv
 		}
 		this->_paramValid = 1;
 		this->_servParam = findServerWithSocket(manager, serverSocket, request["Host"]);
-		this->_method = request["Method"];
-		this->_path = getRootPath(request["Path"]);
-		this->_protocol = request["Protocol"];
-		this->_accept = getAccept(request["Accept"]);
-		this->_body = request["Body"];
-		this->_requestContentType = request["Content-Type"];
-		getQuery();
-		setCgiPathPy(extractCgiPathPy());
-		setCgiPathPhp(extractCgiPathPhp());
-		if (this->_protocol != "HTTP/1.1")
-			this->_statusCode = HTTP_VERSION_NOT_SUPPORTED;
-		else
-			this->_statusCode = OK;
-	}
-}
-
-Requests::~Requests() {}
-
-bool Requests::checkExtension() {
-	if (this->_path == "./pages/favicon.ico") {
-		this->_contentType = "image/x-icon";
-		return true;
-	}
-	size_t find = this->_path.find_last_of(".");
-	if (find != std::string::npos) {
-		std::string extension = this->_path.substr(find + 1, this->_path.size());
-		if (extension == "php" || extension == "py") {
-			this->_contentType = "text/html";
-			return true;
-		}
-		for (unsigned int i = 0; i < this->_accept.size(); i++) {
-			size_t find = this->_accept[i].find("/");
-			if (find != std::string::npos) {
-				std::string type = this->_accept[i].substr(find + 1, this->_accept[i].size());
-				if (extension == type) {
-					this->_contentType = this->_accept[i];
-					return true;
+		if (this->_paramValid) {
+			this->_protocol = request["Protocol"];
+			if (this->_protocol != "HTTP/1.1")
+				this->_statusCode = HTTP_VERSION_NOT_SUPPORTED;
+			else {
+				getRootPath(request["Path"]);
+				this->_method = request["Method"];
+				if (!isMethodAllowed())
+					this->_statusCode = METHOD_NOT_ALLOWED;
+				else {
+					setPath();
+					if (this->_statusCode == OK || this->_statusCode == FOUND) {
+            this->_requestContentType = request["Content-Type"];
+						this->_accept = getAccept(request["Accept"]);
+						setContentType();
+						this->_body = request["Body"];
+					}
 				}
 			}
 		}
 	}
-	return false;
 }
 
-void Requests::checkPage() {
-	DIR *dir = opendir(this->_path.c_str());
-	if (dir != NULL) {
-		closedir(dir);
-		std::string slash = "";
-		if (this->_path[this->_path.size() - 1] != '/')
-			slash = "/";
-		this->_path = this->_path + slash + "index.html";
-	}
-	if (access(this->_path.c_str(), F_OK))
-		this->_statusCode = NOT_FOUND;
-	else if (access(this->_path.c_str(), R_OK))
-		this->_statusCode = FORBIDDEN;
-	else if (!checkExtension())
-		this->_statusCode = NOT_ACCEPTABLE;
-}
+Requests::~Requests() {}
 
 std::string getPage(std::string filename, std::string responseStatus) {
 	std::ifstream fd(filename.c_str());
@@ -444,11 +559,11 @@ std::string Requests::doUpload() {
 std::string Requests::getResponse() {
 	if (!this->_paramValid)
 		return "";
-	if (this->_statusCode == OK)
-		checkPage();
-	if (this->_statusCode == OK && this->_method == "POST" && !this->_requestContentType.compare(0, 19, "multipart/form-data"))
-		return doUpload();
-	if (this->_statusCode == OK) {
+	if (this->_statusCode == OK || this->_statusCode == FOUND) {
+		if (this->_autoIndexFile != "")
+			return setResponseScript(this->_autoIndexFile, "OK") + this->_autoIndexFile;
+	  if (this->_statusCode == OK && this->_method == "POST" && !this->_requestContentType.compare(0, 19, "multipart/form-data"))
+      return doUpload();
 		std::vector<std::string> words = split(this->_path, ".");
 		if (words.size() == 1) {
 			this->_statusCode = BAD_REQUEST;
@@ -461,6 +576,8 @@ std::string Requests::getResponse() {
 			}
 			return execCgi(words[words.size() - 1]);
 		}
+		if (this->_statusCode == FOUND)
+			return getPage(this->_path, setResponse("Found"));
 		return getPage(this->_path, setResponse("OK"));
 	}
 	return setErrorPage();
@@ -508,39 +625,12 @@ std::string Requests::setResponseScript(const std::string &scriptResult, const s
 	response.append("\n");
 	response.append("Content-Location: " + this->_path.substr(1, this->_path.size()) + "\n");
 	response.append("Content-Type: " + this->_contentType + "\n");
+	time_t actualTime = time(NULL);
+	response.append("Date: ");
+	response.append(ctime(&actualTime));
+	response.append("Last-Modified: ");
+	response.append(ctime(&actualTime));
 	response.append("Server: Webserv\n");
 	response.append("\n");
 	return response;
 }
-
-std::string Requests::extractCgiPathPy() const {
-	std::vector<LocationConfig> locations = this->_servParam.getLocations();
-	std::string cgiPath;
-	for (size_t i = 0; i < locations.size(); i++) {
-		if (locations[i].getPath() == "/cgi-bin") {
-			 std::map<std::string, std::string> cgiPaths = locations[i].getCgiPaths();
-			 std::map<std::string, std::string>::iterator it = cgiPaths.find(".py");
-            cgiPath = it->second;
-			}
-		}
-	return cgiPath;
-}
-
-void Requests::setCgiPathPy(const std::string &path) {this->_cgiPathPy = path;}
-std::string Requests::getCgiPathPy() const {return this->_cgiPathPy;}
-
-std::string Requests::extractCgiPathPhp() const {
-	std::vector<LocationConfig> locations = this->_servParam.getLocations();
-	std::string cgiPath;
-	for (size_t i = 0; i < locations.size(); i++) {
-		if (locations[i].getPath() == "/cgi-bin") {
-			 std::map<std::string, std::string> cgiPaths = locations[i].getCgiPaths();
-			 std::map<std::string, std::string>::iterator it = cgiPaths.find(".php");
-            cgiPath = it->second;
-			}
-		}
-	return cgiPath;
-}
-
-void Requests::setCgiPathPhp(const std::string &path) {this->_cgiPathPhp = path;}
-std::string Requests::getCgiPathPhp() const {return this->_cgiPathPhp;}

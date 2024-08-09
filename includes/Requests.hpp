@@ -17,7 +17,7 @@
 
 enum StatusCode {
 	OK = 200,
-	MOVED_PERMANENTLY = 301,
+	FOUND = 302,
 	BAD_REQUEST = 400,
 	FORBIDDEN = 403,
 	NOT_FOUND = 404,
@@ -43,39 +43,42 @@ class Requests {
 
 		int _statusCode;
 		std::string _method;
+		std::string _urlPath;
 		std::string _path;
 		std::string _query;
 		std::string _protocol;
 		std::vector<std::string> _accept;
+		std::vector<std::string> _allowMethod;
+		std::string _index;
+		bool _autoIndex;
+		std::string _root;
+		std::string _uploadDir;
+		std::string _redirection;
 		std::string _contentType;
 		Server _servParam;
 		bool _paramValid;
 		std::string _cgiPathPy;
 		std::string _cgiPathPhp;
 		std::string _body;
+		std::string _autoIndexFile;
 		std::string _requestContentType;
 
 		void getQuery();
-		void checkPage();
-		bool checkExtension();
 		std::string setErrorPage();
 		std::string setResponse(const std::string &codeName);
 		Server findServerWithSocket(std::vector<Server> manager, int serverSocket, std::string serverName);
 		std::string getBody(std::vector<std::string> bufSplitted, size_t i, std::map<std::string, std::string> request);
-		std::string getRootPath(const std::string &path);
+		void getRootPath(const std::string &path);
+		void setPath();
+		bool isMethodAllowed();
+		void setContentType();
+		void createAutoIndexFile();
 
 		std::string execCgi(const std::string& scriptType);
 		std::string readFromPipe(int pipeFd);
 		char** vectorToCharArray(const std::vector<std::string> &vector);
 	    std::vector<std::string> createCgiEnv();
-		std::string getCgiPathPy() const;
-		std::string extractCgiPathPy() const;
-		std::string extractCgiPathPhp() const;
 		std::string setResponseScript(const std::string &scriptResult, const std::string &codeName);
-		void setCgiPathPy(const std::string &path);
-		std::string getCgiPathPhp() const;
-		void setCgiPathPhp(const std::string &path);
-		std::string doUpload();
 };
 
 std::string itostr(int nb);
