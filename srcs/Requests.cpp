@@ -415,16 +415,30 @@ std::string  Requests::execCgi(const std::string& scriptType) {
 
 
 std::string Requests::doUpload() {
-	std::string uploadDir = "uploadDir";
-	if (uploadDir.empty())
-		return getPage("/uploadDirNotFound.html", setResponse("OK"));
-	if (access(uploadDir.c_str(), F_OK | W_OK) == -1) {
-		this->_statusCode = 404;
-		return setErrorPage();	
+	
+	std::ofstream file("upload1.txt");
+	if (!file) {
+		this->_statusCode = 505;
+		return setErrorPage();
 	}
+	std::string bodyToUpload = this->_body;
 
-	this->_statusCode = 413;
-	return setErrorPage();
+	int lineCount = 0, startPos = 0, endPos = 0;
+	while (lineCount < 3) {
+		endPos = bodyToUpload.find('\n', startPos);
+		endPos++;
+		bodyToUpload.erase(startPos, endPos);
+		lineCount++;
+	}
+	size_t lastLinePos = bodyToUpload.rfind('\n');
+	if (lastLinePos != std::string::npos)
+		bodyToUpload.erase(lastLinePos);
+	lastLinePos = bodyToUpload.rfind('\n');
+	if (lastLinePos != std::string::npos)
+		bodyToUpload.erase(lastLinePos);
+	file << bodyToUpload;
+	file.close();
+	return getPage("./pages/uploadSuccessful.html", setResponse("OK"));
 }
 
 std::string Requests::getResponse() {
@@ -432,8 +446,8 @@ std::string Requests::getResponse() {
 		return "";
 	if (this->_statusCode == OK)
 		checkPage();
-	// if (this->_statusCode == OK && this->_method == "POST" && this->_requestContentType == "multipart/form-data")
-	// 	return doUpload();
+	if (this->_statusCode == OK && this->_method == "POST" && !this->_requestContentType.compare(0, 19, "multipart/form-data"))
+		return doUpload();
 	if (this->_statusCode == OK) {
 		std::vector<std::string> words = split(this->_path, ".");
 		if (words.size() == 1) {
