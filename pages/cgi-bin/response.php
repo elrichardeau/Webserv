@@ -24,9 +24,14 @@ if ($_SERVER["REQUEST_METHOD"] == "GET") {
     </body>
     </html>';
 } else if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    echo '<pre>POST Data: ' . print_r($_POST, true) . '</pre>';
-    $name = htmlspecialchars($_POST['name'] ?? 'N/A');
-    $age = htmlspecialchars($_POST['age'] ?? 'N/A');
+
+    // Essayer une autre méthode pour lire les données POST
+    $postData = stream_get_contents(STDIN);
+    parse_str($postData, $params);
+
+
+    $name = htmlspecialchars($params['name'] ?? 'N/A');
+    $age = htmlspecialchars($params['age'] ?? 'N/A');
 
     echo '<!DOCTYPE html>
     <html lang="en">
@@ -48,5 +53,4 @@ if ($_SERVER["REQUEST_METHOD"] == "GET") {
     </body>
     </html>';
 }
-
 ?>

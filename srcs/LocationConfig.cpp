@@ -44,10 +44,11 @@ void LocationConfig::addAllowMethod(const std::string &method)
 	allowMethods.push_back(method);	
 }
 
-void LocationConfig::setIndex(const std::string &idx) 
+void LocationConfig::setIndex(std::vector<std::string> &idx) 
 { 
-	this->index = idx; 
+	this->index = idx;
 }
+
 
 void LocationConfig::setAutoIndex(bool autoidx) 
 { 
@@ -90,8 +91,8 @@ std::vector<std::string> LocationConfig::getAllowMethods() const
 	return (this->allowMethods);
 }
 
-std::string LocationConfig::getIndex() const
-{ 
+std::vector<std::string> LocationConfig::getIndex() const
+{
 	return (this->index); 
 }
 

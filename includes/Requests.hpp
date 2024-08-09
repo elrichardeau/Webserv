@@ -36,6 +36,9 @@ class Requests {
 		~Requests();
 		std::string getResponse();
 
+		void receiveBody(const std::string &buffBody);
+		std::string getRequestContentType() const;
+
 	private :
 
 		int _statusCode;
@@ -58,6 +61,7 @@ class Requests {
 		std::string _cgiPathPhp;
 		std::string _body;
 		std::string _autoIndexFile;
+		std::string _requestContentType;
 
 		void getQuery();
 		std::string setErrorPage();

@@ -9,6 +9,11 @@ std::string itostr(int nb) {
 	return str;
 }
 
+void Requests::receiveBody(const std::string &buffBody) {
+	this->_body = buffBody;
+	std::cout << _body << std::endl;
+}
+
 std::vector<std::string> split(std::string buf, const std::string &find) {
 	std::vector<std::string> vector;
 	if (buf.find(find) == std::string::npos) {
@@ -21,6 +26,8 @@ std::vector<std::string> split(std::string buf, const std::string &find) {
 	}
 	return vector;
 }
+
+
 
 bool isSyntaxGood(std::vector<std::string> &request) {
 	size_t find;
@@ -382,6 +389,7 @@ Requests::Requests(const std::string &buf, std::vector<Server> manager, int serv
 				else {
 					setPath();
 					if (this->_statusCode == OK || this->_statusCode == FOUND) {
+            this->_requestContentType = request["Content-Type"];
 						this->_accept = getAccept(request["Accept"]);
 						setContentType();
 						this->_body = request["Body"];
@@ -452,10 +460,13 @@ std::vector<std::string> Requests::createCgiEnv() {
 		exportVar(env, "QUERY_STRING", this->_query);
 	else if (!this->_method.compare("POST")) {
 		exportVar(env, "CONTENT_LENGTH", itostr(this->_body.size()));
-		exportVar(env, "CONTENT_TYPE", "x-www-form-urlencoded");
+		exportVar(env, "CONTENT_TYPE", "application/x-www-form-urlencoded"); //todo _contentTypeRequest
 	}
 	return env;
 }
+
+std::string Requests::getRequestContentType() const {return this->_requestContentType;}
+
 
 std::string  Requests::execCgi(const std::string& scriptType) {
 	int childPid;
@@ -517,12 +528,42 @@ std::string  Requests::execCgi(const std::string& scriptType) {
 	return response;
 }
 
+
+std::string Requests::doUpload() {
+	
+	std::ofstream file("upload1.txt");
+	if (!file) {
+		this->_statusCode = 505;
+		return setErrorPage();
+	}
+	std::string bodyToUpload = this->_body;
+
+	int lineCount = 0, startPos = 0, endPos = 0;
+	while (lineCount < 3) {
+		endPos = bodyToUpload.find('\n', startPos);
+		endPos++;
+		bodyToUpload.erase(startPos, endPos);
+		lineCount++;
+	}
+	size_t lastLinePos = bodyToUpload.rfind('\n');
+	if (lastLinePos != std::string::npos)
+		bodyToUpload.erase(lastLinePos);
+	lastLinePos = bodyToUpload.rfind('\n');
+	if (lastLinePos != std::string::npos)
+		bodyToUpload.erase(lastLinePos);
+	file << bodyToUpload;
+	file.close();
+	return getPage("./pages/uploadSuccessful.html", setResponse("OK"));
+}
+
 std::string Requests::getResponse() {
 	if (!this->_paramValid)
 		return "";
 	if (this->_statusCode == OK || this->_statusCode == FOUND) {
 		if (this->_autoIndexFile != "")
 			return setResponseScript(this->_autoIndexFile, "OK") + this->_autoIndexFile;
+	  if (this->_statusCode == OK && this->_method == "POST" && !this->_requestContentType.compare(0, 19, "multipart/form-data"))
+      return doUpload();
 		std::vector<std::string> words = split(this->_path, ".");
 		if (words.size() == 1) {
 			this->_statusCode = BAD_REQUEST;
