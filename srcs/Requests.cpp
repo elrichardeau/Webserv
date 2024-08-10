@@ -448,7 +448,9 @@ std::string  Requests::execCgi(const std::string& scriptType) {
 }
 
 std::string Requests::doUpload() {
+
 	DIR *dirFd = opendir(this->_uploadDir.c_str());
+	std::cout << this->_uploadDir << std::endl;
 	if (!dirFd) {
 		this->_statusCode = BAD_REQUEST;
 		return setErrorPage();
@@ -464,18 +466,24 @@ std::string Requests::doUpload() {
 		this->_statusCode = BAD_REQUEST;
 		return setErrorPage();
 	}
-	std::string filename = this->_uploadDir + "/" + this->_body.substr(posFilename, endFilename - posFilename);
-	if (!access(filename.c_str(), F_OK)) {
-		int index = 1;
-		for (int i = 1; !access((filename + "(" + itostr(i) + ")").c_str(), F_OK); i++)
-			index = i + 1;
-		filename = filename + "(" + itostr(index) + ")";
-	}
-	std::ofstream file(filename.c_str());
-	if (!file) {
-		this->_statusCode = 505;
-		return setErrorPage();
-	}
+	std::string filename = this->_body.substr(posFilename, endFilename - posFilename);
+	std::string filePath = this->_uploadDir + "/" + filename;
+
+    int count = 1;
+    std::string newFilePath = filePath;
+    size_t dotPosition = filename.find_last_of(".");
+    std::string baseName = filename.substr(0, dotPosition);
+    std::string extension = (dotPosition != std::string::npos) ? filename.substr(dotPosition) : "";
+    while (std::ifstream(newFilePath.c_str()).is_open()) {
+        std::stringstream ss;
+        ss << "upload/" << baseName << "_" << count++ << extension;
+        newFilePath = ss.str();
+    }
+    std::ofstream outFile(newFilePath.c_str(), std::ios::binary);
+    if (!outFile.is_open()) {
+        this->_statusCode = 505;
+        return setErrorPage();
+    }
 	std::string bodyToUpload = this->_body;
 	int lineCount = 0, startPos = 0, endPos = 0;
 	while (lineCount < 4) {
@@ -490,8 +498,8 @@ std::string Requests::doUpload() {
 	lastLinePos = bodyToUpload.find_last_of('\n');
 	if (lastLinePos != std::string::npos)
 		bodyToUpload.erase(lastLinePos);
-	file << bodyToUpload;
-	file.close();
+	outFile << bodyToUpload;
+	outFile.close();
 	this->_path = "./pages/uploadSuccessful.html";
 	return getPage(this->_path, setResponse("OK"));
 }
