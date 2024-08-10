@@ -44,7 +44,7 @@ void ServerManager::createSockets() {
 }
 
 void ServerManager::controlSockets(int epollFd) {
-	struct epoll_event event;
+	struct epoll_event event = {};
 	event.events = EPOLLIN | EPOLLHUP;
 	for (size_t i = 0; i < this->_servers.size(); i++) {
 		if (this->_servers[i].getIsDup() == true)
@@ -63,7 +63,7 @@ int ServerManager::compareServerSocket(int eventFd) {
 }
 
 void ServerManager::handleServerSocket(int epollFd, int index) {
-	struct epoll_event event;
+	struct epoll_event event = {};
 	int clientSocket = accept(this->_servers[index].getServerSocket(), (struct sockaddr *)&this->_servers[index].getAddress(), (socklen_t *)&this->_servers[index].getAddrLen());
 	if (clientSocket < 0)
 		throw SocketFailed();
