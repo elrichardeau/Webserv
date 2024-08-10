@@ -111,7 +111,6 @@ void ServerManager::handleClientSocket(epoll_event event) {
 		if (bytesRead <= 0)
 			compareClientSocket(event.data.fd, 1);
 		else {
-			std::cout << "Request : " << requestData << std::endl << "==============================================================" << std::endl;
 			Requests req(requestData, this->_servers, serverSocket);
 			if (req.getBody("")) {
 				while ((bytesRead = recv(event.data.fd, buffer, BUF_SIZE, 0)) > 0) {

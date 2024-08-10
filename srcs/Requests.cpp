@@ -257,9 +257,6 @@ void Requests::setContentType() {
 }
 
 void Requests::setBodyType(const std::string &length, const std::string &encoding, const std::string &type) {
-	std::cout << "length = " << length << std::endl;
-	std::cout << "encoding = " << encoding << std::endl;
-	std::cout << "type = " << type << std::endl;
 	this->_lenOfBody = -1;
 	if (encoding == "chunked") {
 		this->_hasBody = CHUNKED;
@@ -307,6 +304,7 @@ Requests::Requests(const std::string &buf, std::vector<Server> manager, int serv
 		}
 		this->_paramValid = 1;
 		this->_servParam = findServerWithSocket(manager, serverSocket, request["Host"]);
+		setBodyType(request["Content-Length"], request["Transfer-Encoding"], request["Content-Type"]);
 		if (this->_paramValid) {
 			this->_protocol = request["Protocol"];
 			if (this->_protocol != "HTTP/1.1")
@@ -319,7 +317,6 @@ Requests::Requests(const std::string &buf, std::vector<Server> manager, int serv
 				else {
 					setPath();
 					if (this->_statusCode == OK || this->_statusCode == FOUND) {
-						setBodyType(request["Content-Length"], request["Transfer-Encoding"], request["Content-Type"]);
 						this->_accept = getAccept(request["Accept"]);
 						setContentType();
 					}
@@ -495,13 +492,13 @@ std::string Requests::doUpload() {
 		bodyToUpload.erase(lastLinePos);
 	file << bodyToUpload;
 	file.close();
-	return getPage("./pages/uploadSuccessful.html", setResponse("OK"));
+	this->_path = "./pages/uploadSuccessful.html";
+	return getPage(this->_path, setResponse("OK"));
 }
 
 bool Requests::getBody(const std::string &add) {
 	if (!this->_hasBody)
 		return false;
-	std::cout << this->_body << " : " << this->_lenOfBody << std::endl;
 	if (this->_body.size() == static_cast<size_t>(this->_lenOfBody))
 		return false;
 	this->_body.append(add);
