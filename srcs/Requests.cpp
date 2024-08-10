@@ -9,11 +9,6 @@ std::string itostr(int nb) {
 	return str;
 }
 
-void Requests::receiveBody(const std::string &buffBody) {
-	this->_body = buffBody;
-	std::cout << _body << std::endl;
-}
-
 std::vector<std::string> split(std::string buf, const std::string &find) {
 	std::vector<std::string> vector;
 	if (buf.find(find) == std::string::npos) {
@@ -27,55 +22,20 @@ std::vector<std::string> split(std::string buf, const std::string &find) {
 	return vector;
 }
 
-
-
 bool isSyntaxGood(std::vector<std::string> &request) {
 	size_t find;
-	bool body = 0;
-	bool length = 0;
-	bool chunked = 0;
-	bool line = 0;
 	if (request.empty() || request[0].empty() || split(request[0], " ").size() != 3)
 		return false;
 	for (size_t i = 0; i < request.size(); i++) {
-		if (body == 0) {
-			if (!request[i].compare(0, 15, "Content-Length:")) {
-				if (length == 1 || chunked == 1)
-					return false;
-				length = 1;
-			}
-			else if (!request[i].compare(0, 26, "Transfer-Encoding: chunked")) {
-				if (chunked == 1 || length == 1)
-					return false;
-				chunked = 1;
-			}
-			else if (!request[i].compare("\r")) {
-				body = 1;
-				continue;
-			}
-			find = request[i].find("\r");
-			if (find == std::string::npos)
-				return false;
-			request[i].erase(find);
-			find = request[i].find(": ");
-			if (i != 0 && find == std::string::npos)
-				return false;
-		}
-		else {
-			if (length == 1) {
-				find = request[i].find("\r");
-				if (line == 1 || find != std::string::npos)
-					return false;
-				line = !line;
-			}
-			else if (chunked == 1) {
-				find = request[i].find("\r");
-				if (find == std::string::npos)
-					return false;
-			}
-			else
-				return false;
-		}
+		if (request[i] == "\r")
+			break;
+		find = request[i].find("\r");
+		if (find == std::string::npos)
+			return false;
+		request[i].erase(find);
+		find = request[i].find(": ");
+		if (i != 0 && find == std::string::npos)
+			return false;
 	}
 	return true;
 }
@@ -125,63 +85,6 @@ Server Requests::findServerWithSocket(std::vector<Server> manager, int serverSoc
 	return manager[0];
 }
 
-std::string Requests::getBody(std::vector<std::string> bufSplitted, size_t index, std::map<std::string, std::string> request) {
-	size_t length = atoi(request["Content-Length"].c_str());
-	if (length > this->_servParam.getClientMaxBodySize()) {
-		this->_statusCode = NOT_IMPLEMENTED;
-		return "";
-	}
-	if (length != 0) {
-		if (index + 1 >= bufSplitted.size() || length != strlen(bufSplitted[index + 1].c_str())) {
-			this->_statusCode = BAD_REQUEST;
-			return "";
-		}
-		return bufSplitted[index + 1];
-	}
-	bool chunked = !request["Transfer-Encoding"].compare("chunked");
-	if (chunked == 1) {
-		std::string body;
-		size_t find;
-		bool line = 0;
-		char *endPtr;
-		size_t nbOfReturn = 0;
-		for (size_t i = index + 1; i < bufSplitted.size(); i++) {
-			find = bufSplitted[i].find("\r");
-			if (find != std::string::npos)
-				bufSplitted[i].erase(find);
-			if (!bufSplitted[i].empty()) {
-				nbOfReturn++;
-				body.append("\n");
-			}
-			else if (line == 0) {
-				size_t lenTmp = std::strtol(bufSplitted[i].c_str(), &endPtr, 16);
-				if (lenTmp == 0)
-					break;
-				length += lenTmp;
-				if (*endPtr != '\0') {
-					this->_statusCode = BAD_REQUEST;
-					return "";
-				}
-				line = !line;
-			}
-			else {
-				body.append(bufSplitted[i]);
-				line = !line;
-			}
-		}
-		if (length > this->_servParam.getClientMaxBodySize()) {
-			this->_statusCode = NOT_IMPLEMENTED;
-			return "";
-		}
-		if (length - nbOfReturn != strlen(body.c_str())) {
-			this->_statusCode = BAD_REQUEST;
-			return "";
-		}
-		return body;
-	}
-	return "";
-}
-
 void Requests::getRootPath(const std::string &path) {
 	this->_urlPath = path;
 	if (this->_urlPath.find_last_of("/") != this->_urlPath.size() - 1)
@@ -217,7 +120,6 @@ void Requests::getRootPath(const std::string &path) {
 	}
 	this->_allowMethod.push_back("GET");
 	this->_allowMethod.push_back("HEAD");
-	this->_index = "";
 	this->_autoIndex = false;
 	this->_root = this->_servParam.getRoot();
 	this->_uploadDir = "";
@@ -281,9 +183,9 @@ void Requests::setPath() {
 	DIR *dir = opendir(this->_path.c_str());
 	if (dir != NULL) {
 		closedir(dir);
-		if (this->_index != "") {
-			if (!access((this->_path + this->_index).c_str(), F_OK | R_OK)) {
-				this->_path.append(this->_index);
+		for (size_t i = 0; i < this->_index.size(); i++) {
+			if (!access((this->_path + this->_index[i]).c_str(), F_OK | R_OK)) {
+				this->_path.append(this->_index[i]);
 				this->_statusCode = OK;
 				return;
 			}
@@ -354,6 +256,29 @@ void Requests::setContentType() {
 	this->_statusCode = NOT_ACCEPTABLE;
 }
 
+void Requests::setBodyType(const std::string &length, const std::string &encoding, const std::string &type) {
+	this->_lenOfBody = -1;
+	if (encoding == "chunked") {
+		this->_hasBody = CHUNKED;
+		this->_lenOfBody = 0;
+		return;
+	}
+	if (type == "application/x-www-form-urlencoded") {
+		this->_hasBody = CLASSIC;
+		this->_lenOfBody = std::atoi(length.c_str());
+		return;
+	}
+	if (type.find("multipart/form-data; boundary=") != std::string::npos) {
+		this->_hasBody = MULTIPART;
+		this->_lenOfBody = std::atoi(length.c_str());
+		this->_boundary = type.substr(type.find("=-"), type.size());
+		return;
+	}
+	if (this->_hasBody == UNDEFINED)
+		this->_statusCode = BAD_REQUEST;
+	this->_hasBody = NO_ONE;
+}
+
 Requests::Requests(const std::string &buf, std::vector<Server> manager, int serverSocket) {
 	std::vector<std::string> bufSplitted = split(buf, "\n");
 	if (!isSyntaxGood(bufSplitted)) {
@@ -362,21 +287,24 @@ Requests::Requests(const std::string &buf, std::vector<Server> manager, int serv
 		this->_statusCode = BAD_REQUEST;
 	}
 	else {
+		this->_hasBody = NO_ONE;
 		std::map<std::string, std::string> request;
 		std::vector<std::string> methodPathProtocol = split(bufSplitted[0], " ");
 		request.insert(std::make_pair("Method", methodPathProtocol[0]));
 		request.insert(std::make_pair("Path", methodPathProtocol[1]));
 		request.insert(std::make_pair("Protocol", methodPathProtocol[2]));
 		for (size_t i = 1; i < bufSplitted.size(); i++) {
-			if (!bufSplitted[i].compare("\r")) {
-				if (i + 1 != bufSplitted.size())
-					request.insert(std::make_pair("Body", getBody(bufSplitted, i, request)));
+			if (this->_hasBody || (bufSplitted[i] == "\r" && i + 1 != bufSplitted.size())) {
+				this->_hasBody = UNDEFINED;
+				this->_body = buf.substr(buf.find("\r\n\r\n") + 4, buf.size());
 				break;
 			}
-			request.insert(std::make_pair(bufSplitted[i].substr(0, bufSplitted[i].find(": ")), bufSplitted[i].substr(bufSplitted[i].find(": ") + 2, bufSplitted[i].size())));
+			else
+				request.insert(std::make_pair(bufSplitted[i].substr(0, bufSplitted[i].find(": ")), bufSplitted[i].substr(bufSplitted[i].find(": ") + 2, bufSplitted[i].size())));
 		}
 		this->_paramValid = 1;
 		this->_servParam = findServerWithSocket(manager, serverSocket, request["Host"]);
+		setBodyType(request["Content-Length"], request["Transfer-Encoding"], request["Content-Type"]);
 		if (this->_paramValid) {
 			this->_protocol = request["Protocol"];
 			if (this->_protocol != "HTTP/1.1")
@@ -389,10 +317,8 @@ Requests::Requests(const std::string &buf, std::vector<Server> manager, int serv
 				else {
 					setPath();
 					if (this->_statusCode == OK || this->_statusCode == FOUND) {
-            this->_requestContentType = request["Content-Type"];
 						this->_accept = getAccept(request["Accept"]);
 						setContentType();
-						this->_body = request["Body"];
 					}
 				}
 			}
@@ -404,10 +330,6 @@ Requests::~Requests() {}
 
 std::string getPage(std::string filename, std::string responseStatus) {
 	std::ifstream fd(filename.c_str());
-	if (!fd.is_open()) {
-        std::cerr << "Failed to open file: " << filename << std::endl;
-        return "HTTP/1.1 500 Internal Server Error\r\n\r\n";
-    }
     std::string line;
 	std::string response = responseStatus;
     while (getline(fd, line))
@@ -464,9 +386,6 @@ std::vector<std::string> Requests::createCgiEnv() {
 	}
 	return env;
 }
-
-std::string Requests::getRequestContentType() const {return this->_requestContentType;}
-
 
 std::string  Requests::execCgi(const std::string& scriptType) {
 	int childPid;
@@ -528,42 +447,74 @@ std::string  Requests::execCgi(const std::string& scriptType) {
 	return response;
 }
 
-
 std::string Requests::doUpload() {
-	
-	std::ofstream file("upload1.txt");
+	DIR *dirFd = opendir(this->_uploadDir.c_str());
+	if (!dirFd) {
+		this->_statusCode = BAD_REQUEST;
+		return setErrorPage();
+	}
+	size_t posFilename = this->_body.find("filename=");
+	if (posFilename == std::string::npos) {
+		this->_statusCode = BAD_REQUEST;
+		return setErrorPage();
+	}
+	posFilename += 10;
+	size_t endFilename = this->_body.find("\"", posFilename);
+	if (endFilename == std::string::npos) {
+		this->_statusCode = BAD_REQUEST;
+		return setErrorPage();
+	}
+	std::string filename = this->_uploadDir + "/" + this->_body.substr(posFilename, endFilename - posFilename);
+	if (!access(filename.c_str(), F_OK)) {
+		int index = 1;
+		for (int i = 1; !access((filename + "(" + itostr(i) + ")").c_str(), F_OK); i++)
+			index = i + 1;
+		filename = filename + "(" + itostr(index) + ")";
+	}
+	std::ofstream file(filename.c_str());
 	if (!file) {
 		this->_statusCode = 505;
 		return setErrorPage();
 	}
 	std::string bodyToUpload = this->_body;
-
 	int lineCount = 0, startPos = 0, endPos = 0;
-	while (lineCount < 3) {
+	while (lineCount < 4) {
 		endPos = bodyToUpload.find('\n', startPos);
 		endPos++;
 		bodyToUpload.erase(startPos, endPos);
 		lineCount++;
 	}
-	size_t lastLinePos = bodyToUpload.rfind('\n');
+	size_t lastLinePos = bodyToUpload.find_last_of('\n');
 	if (lastLinePos != std::string::npos)
 		bodyToUpload.erase(lastLinePos);
-	lastLinePos = bodyToUpload.rfind('\n');
+	lastLinePos = bodyToUpload.find_last_of('\n');
 	if (lastLinePos != std::string::npos)
 		bodyToUpload.erase(lastLinePos);
 	file << bodyToUpload;
 	file.close();
-	return getPage("./pages/uploadSuccessful.html", setResponse("OK"));
+	this->_path = "./pages/uploadSuccessful.html";
+	return getPage(this->_path, setResponse("OK"));
+}
+
+bool Requests::getBody(const std::string &add) {
+	if (!this->_hasBody)
+		return false;
+	if (this->_body.size() == static_cast<size_t>(this->_lenOfBody))
+		return false;
+	this->_body.append(add);
+	return true;
 }
 
 std::string Requests::getResponse() {
+	if (this->_body.size() != 0 && this->_body.size() != static_cast<size_t>(this->_lenOfBody))
+		this->_statusCode = BAD_REQUEST;
 	if (!this->_paramValid)
 		return "";
 	if (this->_statusCode == OK || this->_statusCode == FOUND) {
+		if (this->_statusCode == OK && this->_method == "POST" && this->_hasBody == MULTIPART)
+    		return doUpload();
 		if (this->_autoIndexFile != "")
 			return setResponseScript(this->_autoIndexFile, "OK") + this->_autoIndexFile;
-	  if (this->_statusCode == OK && this->_method == "POST" && !this->_requestContentType.compare(0, 19, "multipart/form-data"))
-      return doUpload();
 		std::vector<std::string> words = split(this->_path, ".");
 		if (words.size() == 1) {
 			this->_statusCode = BAD_REQUEST;

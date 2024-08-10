@@ -91,7 +91,6 @@ int ServerManager::compareClientSocket(int eventFd, bool forClose) {
     return -1;
 }
 
-
 void ServerManager::handleClientSocket(epoll_event event) {
 	char buffer[BUF_SIZE] = {0};
 	int serverSocket = compareClientSocket(event.data.fd, 0);
@@ -100,43 +99,30 @@ void ServerManager::handleClientSocket(epoll_event event) {
 		return ;
 	}
 	else if (event.events & EPOLLIN) {
-		std::cout << "serverSocket : " << serverSocket << std::endl;
 		std::string requestData;
 		int bytesRead;
 		while ((bytesRead = recv(event.data.fd, buffer, BUF_SIZE, 0)) > 0) {
 			buffer[bytesRead] = '\0';
 			requestData.append(buffer);
+			bzero(buffer, sizeof(buffer));
 			if (requestData.find("\r\n\r\n") != std::string::npos)
 				break;
-			bzero(buffer, sizeof(buffer));
 		}
-
 		if (bytesRead <= 0)
 			compareClientSocket(event.data.fd, 1);
 		else {
-			std::cout << requestData << std::endl;
-			std::cout << "BUFFER size = " << strlen(buffer) << std::endl;
-			std::cout << "========================DELIM==================================" << std::endl;
 			Requests req(requestData, this->_servers, serverSocket);
-			std::string bodyData;
-			int bytesRead;
-			if (!req.getRequestContentType().compare(0, 19, "multipart/form-data")) {
+			if (req.getBody("")) {
 				while ((bytesRead = recv(event.data.fd, buffer, BUF_SIZE, 0)) > 0) {
 					buffer[bytesRead] = '\0';
-					std::cout << "BUFFER AFTER RECV " << buffer << std::endl;
-					bodyData.append(buffer);
-					std::cout << "find = " << bodyData.find(req.getRequestContentType().substr(31, req.getRequestContentType().size())) << std::endl;
-					std::cout <<  "getrequestcontentblabla = " << req.getRequestContentType().substr(31, req.getRequestContentType().size()) << std::endl;
-					if (bodyData.find(req.getRequestContentType().substr(31, req.getRequestContentType().size())) != std::string::npos)
-						if (bodyData.find(req.getRequestContentType().substr(31, req.getRequestContentType().size()), req.getRequestContentType().size()) != std::string::npos)
-							break;
+					req.getBody(buffer);
 					bzero(buffer, sizeof(buffer));
+					if (bytesRead < BUF_SIZE)
+						break;
 				}
 				if (bytesRead <= 0)
 					compareClientSocket(event.data.fd, 1);
 			}
-			std::cout << "LES BIG BOSS" << std::endl;
-			req.receiveBody(bodyData);
 			std::string response = req.getResponse();
 			if (response == "")
 				compareClientSocket(event.data.fd, 1);

@@ -28,6 +28,14 @@ enum StatusCode {
 	HTTP_VERSION_NOT_SUPPORTED = 505
 };
 
+enum BodyStatus {
+	NO_ONE,
+	UNDEFINED,
+	CLASSIC,
+	CHUNKED,
+	MULTIPART,
+};
+
 class Requests {
 
 	public :
@@ -35,9 +43,7 @@ class Requests {
 		Requests(const std::string &buf, std::vector<Server> manager, int serverSocket);
 		~Requests();
 		std::string getResponse();
-
-		void receiveBody(const std::string &buffBody);
-		std::string getRequestContentType() const;
+		bool getBody(const std::string &add);
 
 	private :
 
@@ -49,7 +55,7 @@ class Requests {
 		std::string _protocol;
 		std::vector<std::string> _accept;
 		std::vector<std::string> _allowMethod;
-		std::string _index;
+		std::vector<std::string> _index;
 		bool _autoIndex;
 		std::string _root;
 		std::string _uploadDir;
@@ -60,25 +66,28 @@ class Requests {
 		std::string _cgiPathPy;
 		std::string _cgiPathPhp;
 		std::string _body;
+		int _hasBody;
+		int _lenOfBody;
+		std::string _boundary;
 		std::string _autoIndexFile;
-		std::string _requestContentType;
 
 		void getQuery();
 		std::string setErrorPage();
 		std::string setResponse(const std::string &codeName);
 		Server findServerWithSocket(std::vector<Server> manager, int serverSocket, std::string serverName);
-		std::string getBody(std::vector<std::string> bufSplitted, size_t i, std::map<std::string, std::string> request);
 		void getRootPath(const std::string &path);
 		void setPath();
 		bool isMethodAllowed();
 		void setContentType();
 		void createAutoIndexFile();
+		void setBodyType(const std::string &length, const std::string &encoding, const std::string &type);
 
 		std::string execCgi(const std::string& scriptType);
 		std::string readFromPipe(int pipeFd);
 		char** vectorToCharArray(const std::vector<std::string> &vector);
 	    std::vector<std::string> createCgiEnv();
 		std::string setResponseScript(const std::string &scriptResult, const std::string &codeName);
+		std::string doUpload();
 };
 
 std::string itostr(int nb);
