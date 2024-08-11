@@ -8,6 +8,7 @@
 #include <sys/epoll.h>
 #include <sstream>
 #include <arpa/inet.h>
+#include <csignal>
 #include "../includes/Config.hpp"
 #include "../includes/Requests.hpp"
 #include "../includes/Server.hpp"
@@ -15,7 +16,15 @@
 
 #define MAX_EVENTS 10
 
+int signalCode = 1;
+
+void signalHandler(int code) {
+    if (code == SIGINT)
+        signalCode = 0;
+}
+
 int main(int argc, char **argv) {
+    signal(SIGINT, signalHandler);
     std::string filename;
     if (argc <= 2) {
         if (argc == 2)
@@ -38,10 +47,10 @@ int main(int argc, char **argv) {
             exit(EXIT_FAILURE);
         }
         manager.controlSockets(epollFd);
-        while (true) {
+        while (signalCode) {
             struct epoll_event events[MAX_EVENTS];
             int num_fds = epoll_wait(epollFd, events, MAX_EVENTS, -1);
-            if (num_fds == -1) {
+            if (num_fds == -1 && signalCode) {
                 perror("epoll_wait");
                 exit(EXIT_FAILURE);
             }
@@ -53,10 +62,14 @@ int main(int argc, char **argv) {
                     manager.handleClientSocket(events[i]);
             }
         }
+        close(epollFd);
     }
     catch (const std::exception &e) {
         std::cerr << e.what() << std::endl;
         return EXIT_FAILURE; 
     }
-    return (0);
+    close(STDIN_FILENO);
+    close(STDOUT_FILENO);
+    close(STDERR_FILENO);
+    return 0;
 }

@@ -15,8 +15,8 @@ if ($_SERVER["REQUEST_METHOD"] == "GET") {
     <body>
         <h1 class="pagesTitle">Response</h1>
         <div class="response">
-            <div class="tag">Name : <span class="value">' .$params['name'] . '</span></div>
-            <div class="tag">Age : <span class="value">' .$params['age'] . '</span></div>
+            <div class="tag">Name : <span class="value">' .($params['name'] ?? 'N/A') . '</span></div>
+            <div class="tag">Age : <span class="value">' .($params['age'] ?? 'N/A') . '</span></div>
         </div>
         <div class="index">
             <a class="indexButton" href="../index.html">Index</a>
