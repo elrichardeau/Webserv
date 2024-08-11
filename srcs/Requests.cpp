@@ -139,13 +139,14 @@ void Requests::createAutoIndexFile() {
 	for (dirent *dirData = readdir(dir); dirData != NULL; dirData = readdir(dir)) {
 		response.push_back(dirData->d_name);
 	}
+	closedir(dir);
 	std::sort(response.begin(), response.end());
 	this->_autoIndexFile.append("<!DOCTYPE html>");
 	this->_autoIndexFile.append("<html>");
 	this->_autoIndexFile.append("<head>");
 	this->_autoIndexFile.append("<meta charset=\"utf-8\" />");
 	this->_autoIndexFile.append("<html lang=\"en\"></html>");
-	this->_autoIndexFile.append("<link rel=\"stylesheet\" type=\"text/css\" href=\"stylesAutoIndex.css\" />");
+	this->_autoIndexFile.append("<link rel=\"stylesheet\" type=\"text/css\" href=\"/stylesAutoIndex.css\" />");
 	this->_autoIndexFile.append("<title>" + this->_path + "</title>");
 	this->_autoIndexFile.append("</head>");
 	this->_autoIndexFile.append("<body>");
@@ -394,20 +395,18 @@ std::string  Requests::execCgi(const std::string& scriptType) {
 	int fdBody[2];
 	const char *scriptInterpreter;
 	if (pipe(fd) == -1)
-		return this->_statusCode = 500, setErrorPage();
+		return this->_statusCode = INTERNAL_SERVER_ERROR, setErrorPage();
 	childPid = fork();
 	if (childPid == -1)
-		return this->_statusCode = 500, setErrorPage();
-	//si POST, on crée un | pour permettre l'écriture et la lecture du body
+		return this->_statusCode = INTERNAL_SERVER_ERROR, setErrorPage();
 	if (!this->_method.compare("POST")) {
 		if (pipe(fdBody) == -1)
-			return this->_statusCode = 500, setErrorPage();
+			return this->_statusCode = INTERNAL_SERVER_ERROR, setErrorPage();
 		if (write(fdBody[1], this->_body.c_str(), static_cast<int>(this->_body.size())) == -1)
-			return this->_statusCode = 500, setErrorPage();
+			return this->_statusCode = INTERNAL_SERVER_ERROR, setErrorPage();
 	}
 	if (!childPid) {
 		if (!this->_method.compare("POST")) {
-			std::cout << "CONTENT TYPE  " << this->_contentType << std::endl;
 			close(fdBody[1]);
 			if (dup2(fdBody[0], STDIN_FILENO))
 				exit(EXIT_FAILURE);
@@ -428,9 +427,9 @@ std::string  Requests::execCgi(const std::string& scriptType) {
 		exit(EXIT_FAILURE);
 	}
 	if (waitpid(childPid, &childValue, WUNTRACED) == -1)
-			return close(fd[0]), close(fd[1]), this->_statusCode = 500, setErrorPage();
+			return close(fd[0]), close(fd[1]), this->_statusCode = INTERNAL_SERVER_ERROR, setErrorPage();
 	if (WEXITSTATUS(childValue) == 1)
-		return close(fd[0]), close(fd[1]), this->_statusCode = 500, setErrorPage();
+		return close(fd[0]), close(fd[1]), this->_statusCode = INTERNAL_SERVER_ERROR, setErrorPage();
 	if (!this->_method.compare("POST")) {
 		close(fdBody[0]);
 		close(fdBody[1]);
@@ -441,10 +440,7 @@ std::string  Requests::execCgi(const std::string& scriptType) {
 	std::string line;
 	if (this->_statusCode != OK)
 		return setErrorPage();
-	std::string response = "HTTP/1.1 200 OK\n\n";
-        response.append(scriptContent + "\n");
 	return setResponseScript(scriptContent, "OK") + scriptContent;
-	return response;
 }
 
 std::string Requests::doUpload() {
@@ -453,6 +449,7 @@ std::string Requests::doUpload() {
 		this->_statusCode = BAD_REQUEST;
 		return setErrorPage();
 	}
+	closedir(dirFd);
 	size_t posFilename = this->_body.find("filename=");
 	if (posFilename == std::string::npos) {
 		this->_statusCode = BAD_REQUEST;
