@@ -88,6 +88,7 @@ class Requests {
 	    std::vector<std::string> createCgiEnv();
 		std::string setResponseScript(const std::string &scriptResult, const std::string &codeName);
 		std::string doUpload();
+		std::string deleteFiles();
 		std::string doDelete();
 };
 

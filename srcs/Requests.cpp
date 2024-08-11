@@ -382,12 +382,11 @@ std::vector<std::string> Requests::createCgiEnv() {
 	exportVar(env, "SCRIPT_NAME", "response.php");
 	exportVar(env, "SERVER_PROTOCOL", "HTTP/1.1");
 	exportVar(env, "SERVER_SOFTWARE", "webserv/1.1");
-	// exportVar(env, "DOCUMENT_ROOT", "/var/www/html");
 	if (!this->_method.compare("GET"))
 		exportVar(env, "QUERY_STRING", this->_query);
 	else if (!this->_method.compare("POST")) {
 		exportVar(env, "CONTENT_LENGTH", itostr(this->_body.size()));
-		exportVar(env, "CONTENT_TYPE", "application/x-www-form-urlencoded"); //todo _contentTypeRequest
+		exportVar(env, "CONTENT_TYPE", "application/x-www-form-urlencoded");
 	}
 	return env;
 }
@@ -505,7 +504,7 @@ std::string Requests::doUpload() {
 	return getPage(this->_path, setResponse("OK"));
 }
 
-std::string Requests::doDelete() {
+std::string Requests::deleteFiles() {
 	this->_statusCode = OK;
 	std::vector<std::string> response;
 	std::string page;
@@ -529,9 +528,9 @@ std::string Requests::doDelete() {
 	page.append("<body>");
 	page.append("<h1>Choose files :</h1>");
 	page.append("<ul>");
+	this->_uploadDir.erase(0, this->_root.size() + 1);
 	for (size_t i = 0; i < response.size(); i++) {
 		if (response[i] != "." && response[i] != "..") {
-			std::cout << "gggggggggggggg : " << this->_uploadDir + "/" + response[i] << std::endl << std::endl;
 			page.append("<li>");
 			page.append("<a href=" + this->_uploadDir + "/" + response[i] + ">" + response[i] + "</a>");
 			page.append("<button class=\"delete-button\" data-url=" + this->_uploadDir + "/" + response[i] + ">&#10005;</button>");
@@ -542,8 +541,17 @@ std::string Requests::doDelete() {
 	page.append("<script src=\"delete.js\"></script>");
 	page.append("</body>");
 	page.append("</html>");
-	std::cout << page << std::endl;
 	return setResponseScript(page, "OK") + page;
+}
+
+std::string Requests::doDelete() {
+	if (std::remove(this->_path.c_str()) == -1) {
+		this->_statusCode = INTERNAL_SERVER_ERROR;
+		return setErrorPage();
+	}
+	this->_statusCode = OK;
+	this->_path = "./pages/listFiles/deleteSuccessful.html";
+	return getPage(this->_path, setResponse("OK"));
 }
 
 bool Requests::getBody(const std::string &add) {
@@ -556,16 +564,18 @@ bool Requests::getBody(const std::string &add) {
 }
 
 std::string Requests::getResponse() {
-	std::cout << this->_path << std::endl;
-	std::cout << this->_statusCode << std::endl;
 	if (this->_body.size() != 0 && this->_body.size() != static_cast<size_t>(this->_lenOfBody))
+		this->_statusCode = BAD_REQUEST;
+	if (this->_body.size() > this->_servParam.getClientMaxBodySize())
 		this->_statusCode = BAD_REQUEST;
 	if (!this->_paramValid)
 		return "";
+	if (this->_method == "DELETE")
+		return doDelete();
 	if (this->_path.find(this->_uploadDir) != std::string::npos && this->_body != "")
 		return doUpload();
 	if (this->_path == "./pages/listFiles/delete.html")
-		return doDelete();
+		return deleteFiles();
 	if (this->_statusCode == OK || this->_statusCode == FOUND) {
 		if (this->_statusCode == OK && this->_method == "POST" && this->_hasBody == MULTIPART)
     		return doUpload();

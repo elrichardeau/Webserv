@@ -25,7 +25,6 @@ if ($_SERVER["REQUEST_METHOD"] == "GET") {
     </html>';
 } else if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
-    // Essayer une autre méthode pour lire les données POST
     $postData = stream_get_contents(STDIN);
     parse_str($postData, $params);
 
