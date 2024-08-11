@@ -1,8 +1,11 @@
 #pragma once
 
 #include <string>
+#include <unistd.h>
 #include <vector>
+#include <cstring>
 #include <arpa/inet.h>
+#include <netdb.h>
 #include "ServerConfig.hpp"
 #include "ErrorPage.hpp"
 
