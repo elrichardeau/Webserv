@@ -1,9 +1,8 @@
 document.addEventListener('DOMContentLoaded', function() {
     var selectElement = document.getElementById("resourceList");
 
-    // Faire une requête pour récupérer la liste des fichiers
     var xhr = new XMLHttpRequest();
-    xhr.open('GET', '/listFiles', true);  // Assurez-vous que cette URL retourne la liste des fichiers en JSON
+    xhr.open('GET', '/listFiles', true);
 
     xhr.onreadystatechange = function() {
         if (xhr.readyState === XMLHttpRequest.DONE) {
