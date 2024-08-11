@@ -14,7 +14,21 @@ Server::Server(ServerConfig serverConfig, int port) :   _serverSocket(-1),
                                                         _locations(serverConfig.getLocations()),
                                                         _errorPages(ErrorPage(serverConfig.getErrorPages())) {
     this->_address.sin_family = AF_INET;
-    this->_address.sin_addr.s_addr = inet_addr(this->_host.c_str());
+    struct addrinfo hints, *res, *p;
+    struct sockaddr_in *ipv4;
+    bzero(&hints, sizeof(hints));
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_STREAM;
+    int status = getaddrinfo(this->_host.c_str(), NULL, &hints, &res);
+    if (status != 0) {}
+     for (p = res; p != NULL; p = p->ai_next) {
+        if (p->ai_family == AF_INET) {
+            ipv4 = (struct sockaddr_in *)p->ai_addr;
+            this->_address.sin_addr.s_addr = ipv4->sin_addr.s_addr;
+            break;
+        }
+    }
+     freeaddrinfo(res);
     this->_address.sin_port = htons(port);
     this->_addrLen = sizeof(this->_address);
 }
@@ -32,10 +46,10 @@ Server& Server::operator=(const Server &copy) {
     this->_root = copy._root;
     this->_locations = copy._locations;
     this->_errorPages = copy._errorPages;
-    this->_address.sin_family = AF_INET;
-    this->_address.sin_addr.s_addr = inet_addr(this->_host.c_str());
-    this->_address.sin_port = htons(this->_port);
-    this->_addrLen = sizeof(this->_address);
+    this->_address.sin_family = copy._address.sin_family;
+    this->_address.sin_addr.s_addr = copy._address.sin_addr.s_addr;
+    this->_address.sin_port = copy._address.sin_port;
+    this->_addrLen = copy._addrLen;
 
     return *this;
 }

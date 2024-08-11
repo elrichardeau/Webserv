@@ -34,10 +34,7 @@ int main(int argc, char **argv) {
     }
     try {
         Config config(filename);
-        std::cout << "Servers loaded: " << config.getServers().size() << std::endl;
-        ServerManager manager(config.getServers());
-        std::cout << "True Servers loaded: " << manager.getServers().size() << std::endl;
-        
+        ServerManager manager(config.getServers());        
         manager.createSockets();
         for (size_t i = 0; i < manager.getServers().size(); i++) {
         }
