@@ -613,6 +613,7 @@ std::string Requests::getResponse() {
 		return "";
 	if (this->_method == "GET" && this->_path == "./pages/listFiles")
 	{
+		this->_statusCode = OK;
 		std::string jsonResponse = listFiles(); 
         this->_contentType = "application/json";
         return setResponseScript(jsonResponse, "OK") + jsonResponse;
