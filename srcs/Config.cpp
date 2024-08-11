@@ -44,7 +44,6 @@ void Config::addServer(const ServerConfig &server)
     if (!isUniqueServer(server))
         throw InvalidConfig("Duplicate server configuration detected.");
     servers.push_back(server);
-    // std::cout << "Server added. Total servers: " << servers.size() << std::endl;
 }
 
 std::vector<ServerConfig> Config::getServers() const 
@@ -222,7 +221,6 @@ std::vector<std::string> Config::split(const std::string &str, char delimiter)
             token.erase(token.length() - 1);
         if (!token.empty())
             tokens.push_back(token);
-        //std::cout << "Split token: " << token << std::endl;
     }
     return (tokens);
 }
@@ -387,7 +385,6 @@ void Config::configLocation(bool &inLocationBlock, LocationConfig &currentLocati
     }    
     else
         throw InvalidConfig("Error: Wrong path in Location.");
-    //std::cout << "Location block started for path: " << currentLocation.getPath() << std::endl;
 }
 
 

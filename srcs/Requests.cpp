@@ -103,7 +103,7 @@ void Requests::getRootPath(const std::string &path) {
 			this->_index = tmp[i].getIndex();
 			this->_autoIndex = tmp[i].getautoIndex();
 			this->_root = tmp[i].getRoot();
-			this->_uploadDir = tmp[i].getUploadDir();
+			this->_uploadDir = "." + this->_root + firstPath + tmp[i].getUploadDir();
 			this->_redirection = tmp[i].getReturnDirective();
 			this->_cgiPathPy = "";
 			this->_cgiPathPhp = "";
@@ -253,6 +253,10 @@ void Requests::setContentType() {
 			this->_contentType = "text/css";
 			return;
 		}
+		else if (all && extension == "js") {
+			this->_contentType = "application/json";
+			return;
+		}
 	}
 	this->_statusCode = NOT_ACCEPTABLE;
 }
@@ -378,12 +382,11 @@ std::vector<std::string> Requests::createCgiEnv() {
 	exportVar(env, "SCRIPT_NAME", "response.php");
 	exportVar(env, "SERVER_PROTOCOL", "HTTP/1.1");
 	exportVar(env, "SERVER_SOFTWARE", "webserv/1.1");
-	// exportVar(env, "DOCUMENT_ROOT", "/var/www/html");
 	if (!this->_method.compare("GET"))
 		exportVar(env, "QUERY_STRING", this->_query);
 	else if (!this->_method.compare("POST")) {
 		exportVar(env, "CONTENT_LENGTH", itostr(this->_body.size()));
-		exportVar(env, "CONTENT_TYPE", "application/x-www-form-urlencoded"); //todo _contentTypeRequest
+		exportVar(env, "CONTENT_TYPE", "application/x-www-form-urlencoded");
 	}
 	return env;
 }
@@ -443,53 +446,7 @@ std::string  Requests::execCgi(const std::string& scriptType) {
 	return setResponseScript(scriptContent, "OK") + scriptContent;
 }
 
-
-void generateFileListHTML(const std::string& directory, const std::string& outputFilePath) {
-    std::ofstream outFile(outputFilePath.c_str());
-
-    if (!outFile.is_open()) {
-        std::cerr << "Failed to open file for writing: " << outputFilePath << std::endl;
-        return;
-    }
-    outFile << "<!DOCTYPE html>\n";
-    outFile << "<html lang=\"en\">\n";
-    outFile << "<head>\n";
-    outFile << "    <meta charset=\"UTF-8\">\n";
-    outFile << "    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n";
-    outFile << "    <title>File List</title>\n";
-    outFile << "    <style>\n";
-    outFile << "        body { font-family: Arial, sans-serif; margin: 20px; }\n";
-    outFile << "        h1 { font-size: 24px; }\n";
-    outFile << "        ul { list-style-type: none; padding: 0; }\n";
-    outFile << "        li { margin: 10px 0; }\n";
-    outFile << "        a { color: red; text-decoration: none; margin-left: 10px; }\n";
-    outFile << "    </style>\n";
-    outFile << "</head>\n";
-    outFile << "<body>\n";
-    outFile << "    <h1>Uploaded Files</h1>\n";
-    outFile << "    <ul>\n";
-
-    DIR* dir = opendir(directory.c_str());
-    if (dir) {
-        struct dirent* entry;
-        while ((entry = readdir(dir)) != NULL) {
-            std::string fileName = entry->d_name;
-            if (fileName != "." && fileName != "..") {
-                outFile << "        <li>" << fileName 
-                        << " <a href=\"/delete?file=" << fileName << "</li>\n";
-            }
-        }
-        closedir(dir);
-    } 
-    outFile << "    </ul>\n";
-    outFile << "</body>\n";
-    outFile << "</html>\n";
-    outFile.close();
-}
-
-
 std::string Requests::doUpload() {
-
 	DIR *dirFd = opendir(this->_uploadDir.c_str());
 	if (!dirFd) {
 		this->_statusCode = BAD_REQUEST;
@@ -517,12 +474,12 @@ std::string Requests::doUpload() {
     std::string extension = (dotPosition != std::string::npos) ? filename.substr(dotPosition) : "";
     while (std::ifstream(newFilePath.c_str()).is_open()) {
         std::stringstream ss;
-        ss << "upload/" << baseName << "_" << count++ << extension;
+        ss << this->_uploadDir << "/" << baseName << "_" << count++ << extension;
         newFilePath = ss.str();
     }
     std::ofstream outFile(newFilePath.c_str(), std::ios::binary);
     if (!outFile.is_open()) {
-        this->_statusCode = 505;
+        this->_statusCode = INTERNAL_SERVER_ERROR;
         return setErrorPage();
     }
 	std::string bodyToUpload = this->_body;
@@ -541,10 +498,59 @@ std::string Requests::doUpload() {
 		bodyToUpload.erase(lastLinePos);
 	outFile << bodyToUpload;
 	outFile.close();
+	this->_path.erase(this->_path.find_last_of("/"), this->_path.size());
+	this->_path = this->_path + "/uploadSuccessful.html";
+	this->_statusCode = OK;
+	return getPage(this->_path, setResponse("OK"));
+}
 
-	generateFileListHTML(this->_uploadDir, "./pages/listFiles.html");
+std::string Requests::deleteFiles() {
+	this->_statusCode = OK;
+	std::vector<std::string> response;
+	std::string page;
+	DIR *dir = opendir(this->_uploadDir.c_str());
+	if (dir == NULL) {
+		this->_statusCode = INTERNAL_SERVER_ERROR;
+		return setErrorPage();
+	}
+	for (dirent *dirData = readdir(dir); dirData != NULL; dirData = readdir(dir))
+		response.push_back(dirData->d_name);
+	closedir(dir);
+	std::sort(response.begin(), response.end());
+	page.append("<!DOCTYPE html>");
+	page.append("<html>");
+	page.append("<head>");
+	page.append("<meta charset=\"utf-8\" />");
+	page.append("<html lang=\"en\"></html>");
+	page.append("<link rel=\"stylesheet\" type=\"text/css\" href=\"/stylesAutoIndex.css\" />");
+	page.append("<title>Delete</title>");
+	page.append("</head>");
+	page.append("<body>");
+	page.append("<h1>Choose files :</h1>");
+	page.append("<ul>");
+	this->_uploadDir.erase(0, this->_root.size() + 1);
+	for (size_t i = 0; i < response.size(); i++) {
+		if (response[i] != "." && response[i] != "..") {
+			page.append("<li>");
+			page.append("<a href=" + this->_uploadDir + "/" + response[i] + ">" + response[i] + "</a>");
+			page.append("<button class=\"delete-button\" data-url=" + this->_uploadDir + "/" + response[i] + ">&#10005;</button>");
+			page.append("</li>");
+		}
+	}
+	page.append("</ul>");
+	page.append("<script src=\"delete.js\"></script>");
+	page.append("</body>");
+	page.append("</html>");
+	return setResponseScript(page, "OK") + page;
+}
 
-	this->_path = "./pages/uploadSuccessful.html";
+std::string Requests::doDelete() {
+	if (std::remove(this->_path.c_str()) == -1) {
+		this->_statusCode = INTERNAL_SERVER_ERROR;
+		return setErrorPage();
+	}
+	this->_statusCode = OK;
+	this->_path = "./pages/listFiles/deleteSuccessful.html";
 	return getPage(this->_path, setResponse("OK"));
 }
 
@@ -555,71 +561,21 @@ bool Requests::getBody(const std::string &add) {
 		return false;
 	this->_body.append(add);
 	return true;
-} 
-
-std::string Requests::doDelete() {
-
-    size_t pos = this->_query.find("file=");
-    if (pos == std::string::npos) 
-	{
-		this->_statusCode = BAD_REQUEST;
-        return setErrorPage();
-    }
-    std::string fileName = this->_query.substr(pos + 5);
-    std::string filePath = "." + this->_path + "/" + fileName;
-    if (std::remove(filePath.c_str()) == 0) 
-	{
-		this->_statusCode = OK;
-		this->_path = "./pages/deleteSuccessful.html";
-		return getPage(this->_path, setResponse("OK"));
-    }
-	else 
-	{
-		this->_statusCode = NOT_FOUND;
-        return setErrorPage();
-    }
 }
-
-
-std::string Requests::listFiles() {
-    std::string directoryPath = this->_uploadDir;
-    std::string jsonResponse = "[";
-    DIR* dir = opendir(directoryPath.c_str());
-    if (dir) {
-        struct dirent* entry;
-        bool first = true;
-        while ((entry = readdir(dir)) != NULL) {
-            std::string fileName = entry->d_name;
-            if (fileName != "." && fileName != "..") {
-                if (!first) {
-                    jsonResponse += ",";
-                }
-                jsonResponse += "\"" + fileName + "\"";
-                first = false;
-            }
-        }
-        closedir(dir);
-    }
-    jsonResponse += "]";
-    return jsonResponse;
-}
-
 
 std::string Requests::getResponse() {
-
 	if (this->_body.size() != 0 && this->_body.size() != static_cast<size_t>(this->_lenOfBody))
+		this->_statusCode = BAD_REQUEST;
+	if (this->_body.size() > this->_servParam.getClientMaxBodySize())
 		this->_statusCode = BAD_REQUEST;
 	if (!this->_paramValid)
 		return "";
-	if (this->_method == "GET" && this->_path == "./pages/listFiles")
-	{
-		this->_statusCode = OK;
-		std::string jsonResponse = listFiles(); 
-        this->_contentType = "application/json";
-        return setResponseScript(jsonResponse, "OK") + jsonResponse;
-	}
 	if (this->_method == "DELETE")
 		return doDelete();
+	if (this->_path.find(this->_uploadDir) != std::string::npos && this->_body != "")
+		return doUpload();
+	if (this->_path == "./pages/listFiles/delete.html")
+		return deleteFiles();
 	if (this->_statusCode == OK || this->_statusCode == FOUND) {
 		if (this->_statusCode == OK && this->_method == "POST" && this->_hasBody == MULTIPART)
     		return doUpload();
