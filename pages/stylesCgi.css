@@ -1,7 +1,4 @@
 body {
-	display: flex;
-	justify-content: center;
-	align-items: flex-start;
 	height: calc(100vh - 100px);
 	margin: 0;
 	text-align: center;
@@ -26,7 +23,6 @@ p {
 	margin-top: 80px;
 	color: #bbbbbbc4;
 }
-
 .form-container {
     background-color: #ffffff; 
     color: #000000; 
@@ -36,21 +32,16 @@ p {
     max-width: 400px; 
     margin: 0 auto; 
 }
-
-
 h1 {
     font-size: 2em;
     color: #000000; 
 }
-
-
 label {
     display: block;
     font-size: 1.5em; 
-    color: #ffffff; 
+    color: #000000; 
     margin-bottom: 10px; 
 }
-
 input[type="text"],
 input[type="number"] {
     font-size: 1em;
@@ -61,8 +52,6 @@ input[type="number"] {
     width: 100%;
     box-sizing: border-box; 
 }
-
-
 input[type="submit"] {
     background-color: #007bff;
     color: white;
@@ -72,7 +61,21 @@ input[type="submit"] {
     border-radius: 4px;
     cursor: pointer;
 }
-
 input[type="submit"]:hover {
+    background-color: #0056b3;
+}
+.indexButton {
+    display: block;
+    margin: 50px auto;
+    color: #ffffff;
+    text-decoration: none;
+    font-size: 1.2em;
+    text-align: center;
+    padding: 10px 20px;
+    background-color: #007BFF;
+    border-radius: 5px;
+	width: 100px;
+}
+.indexButton:hover {
     background-color: #0056b3;
 }

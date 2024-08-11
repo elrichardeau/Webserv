@@ -1,7 +1,4 @@
 body {
-	display: flex;
-	justify-content: center;
-	align-items: flex-start;
 	height: calc(100vh - 100px);
 	margin: 0;
 	text-align: center;
@@ -11,6 +8,7 @@ body {
 }
 .container {
 	max-width: 600px;
+	margin: 0 auto;
 }
 h1 {
 	font-size: 6em;
@@ -25,4 +23,19 @@ p {
 	font-size: 1.5em;
 	margin-top: 80px;
 	color: #bbbbbbc4;
+}
+.indexButton {
+    display: block;
+    margin: 50px auto;
+    color: #ffffff;
+    text-decoration: none;
+    font-size: 1.2em;
+    text-align: center;
+    padding: 10px 20px;
+    background-color: #007BFF;
+    border-radius: 5px;
+	width: 100px;
+}
+.indexButton:hover {
+    background-color: #0056b3;
 }

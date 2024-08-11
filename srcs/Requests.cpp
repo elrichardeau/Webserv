@@ -532,13 +532,16 @@ std::string Requests::deleteFiles() {
 	for (size_t i = 0; i < response.size(); i++) {
 		if (response[i] != "." && response[i] != "..") {
 			page.append("<li>");
-			page.append("<a href=" + this->_uploadDir + "/" + response[i] + ">" + response[i] + "</a>");
+			page.append("<a class=\"file\" href=" + this->_uploadDir + "/" + response[i] + ">" + response[i] + "</a>");
 			page.append("<button class=\"delete-button\" data-url=" + this->_uploadDir + "/" + response[i] + ">&#10005;</button>");
 			page.append("</li>");
 		}
 	}
 	page.append("</ul>");
 	page.append("<script src=\"delete.js\"></script>");
+	page.append("<div class=\"index\">");
+	page.append("<a class=\"indexButton\" href=\"../index.html\">Index</a>");
+	page.append("</div>");
 	page.append("</body>");
 	page.append("</html>");
 	return setResponseScript(page, "OK") + page;
