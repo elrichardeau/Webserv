@@ -89,7 +89,6 @@ class Requests {
 		std::string setResponseScript(const std::string &scriptResult, const std::string &codeName);
 		std::string doUpload();
 		std::string doDelete();
-		std::string listFiles();
 };
 
 std::string itostr(int nb);
