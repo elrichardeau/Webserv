@@ -1,6 +1,6 @@
 body {
     display: flex;
-    flex-direction: column; /* Pour empiler les éléments verticalement */
+    flex-direction: column;
     justify-content: center;
     align-items: center;
     height: calc(100vh - 100px);
@@ -8,48 +8,37 @@ body {
     text-align: center;
     font-family: Arial, sans-serif;
     padding-top: 100px;
-    background-color: #0a0024; /* Fond sombre */
-    color: #ffffff; /* Texte blanc par défaut */
+    background-color: #0a0024;
+    color: #ffffff;
 }
-
-/* Conteneur pour les réponses */
 .response {
     margin: 20px;
 }
-
-/* Styles pour les titres */
 h1 {
     font-size: 6em;
-    color: #ffffffc4; /* Titre en blanc transparent */
-    margin-bottom: 20px; /* Espacement sous le titre */
+    color: #ffffffc4;
+    margin-bottom: 20px;
 }
-
-/* Styles pour les tags (nom et âge) */
 .tag {
-    font-size: 2em; /* Taille de police pour les tags */
-    color: #ffffff; /* Texte blanc pour les tags */
+    font-size: 2em;
+    color: #ffffff;
     margin: 10px 0;
 }
-
-/* Styles pour les valeurs des tags */
 .value {
     font-weight: bold;
 }
-
-/* Styles pour les liens (index) */
-.index {
-    margin-top: 20px;
-}
-
 .indexButton {
-    color: #ffffff; /* Texte blanc */
+    display: block;
+    margin: 50px auto;
+    color: #ffffff;
     text-decoration: none;
     font-size: 1.2em;
-    background-color: #007bff; /* Fond du bouton */
+    text-align: center;
     padding: 10px 20px;
-    border-radius: 4px;
+    background-color: #007BFF;
+    border-radius: 5px;
+	width: 100px;
 }
-
 .indexButton:hover {
-    background-color: #0056b3; /* Couleur de fond du bouton au survol */
+    background-color: #0056b3;
 }

@@ -28,12 +28,12 @@ p {
 	margin-top: 80px;
 	color: #bbbbbbc4;
 }
-a {
+a.file {
     color: #1e90ff;
     text-decoration: none;
     font-weight: bold;
 }
-a:hover {
+a.file:hover {
     color: #ff4500;
     text-decoration: underline;
 }
@@ -46,4 +46,32 @@ ul li::marker {
 }
 li {
     margin: 15px 0;
+}
+li a.file {
+	margin-right: 10px;
+}
+.indexButton {
+	display: block;
+	margin: 50px auto;
+	color: #ffffff;
+	text-decoration: none;
+	font-size: 1.2em;
+	text-align: center;
+	padding: 10px 20px;
+	background-color: #007BFF;
+	border-radius: 5px;
+	width: 100px;
+}
+.indexButton:hover {
+    background-color: #0056b3;
+}
+.delete-button {
+    background: none;
+    border: none;
+    color: red;
+    font-size: 1.2em;
+    cursor: pointer;
+}
+.delete-button:hover {
+    color: darkred;
 }
