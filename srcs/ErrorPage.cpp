@@ -21,6 +21,8 @@ ErrorPage::ErrorPage(std::map<int, std::string> errorPages) : _protocol("HTTP/1.
 	this->_errorPage.insert(std::make_pair(405, tmp));
 	createVector(tmp, "./pages/error/406.html", "Not Acceptable");
 	this->_errorPage.insert(std::make_pair(406, tmp));
+	createVector(tmp, "./pages/error/413.html", "Request Entity Too Large");
+	this->_errorPage.insert(std::make_pair(413, tmp));
 	createVector(tmp, "./pages/error/500.html", "Internal Server Error");
 	this->_errorPage.insert(std::make_pair(500, tmp));
 	createVector(tmp, "./pages/error/501.html", "Not Implemented");

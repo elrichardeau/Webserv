@@ -245,7 +245,11 @@ void Requests::setContentType() {
 					all = true;
 			}
 		}
-		if (all && extension == "ico") {
+		if (all && extension == "html") {
+			this->_contentType = "text/html";
+			return;
+		}
+		else if (all && extension == "ico") {
 			this->_contentType = "image/x-icon";
 			return;
 		}
@@ -277,6 +281,11 @@ void Requests::setBodyType(const std::string &length, const std::string &encodin
 		this->_hasBody = MULTIPART;
 		this->_lenOfBody = std::atoi(length.c_str());
 		this->_boundary = type.substr(type.find("=-"), type.size());
+		return;
+	}
+	if (length != "") {
+		this->_hasBody = CLASSIC;
+		this->_lenOfBody = std::atoi(length.c_str());
 		return;
 	}
 	if (this->_hasBody == UNDEFINED)
@@ -351,7 +360,8 @@ std::string Requests::readFromPipe(int pipeFd) {
 		return "";
 	}
 	std::string result;
-	while (bytesRead > 0) {
+	time_t t = time(NULL);
+	while (bytesRead > 0 && t + 2 > time(NULL)) {
 		buffer[bytesRead] = '\0';
 		result += buffer;
 		bytesRead = read(pipeFd, buffer, 4096 - 1);
@@ -429,7 +439,7 @@ std::string  Requests::execCgi(const std::string& scriptType) {
 		delete [] env;
 		exit(EXIT_FAILURE);
 	}
-	if (waitpid(childPid, &childValue, WUNTRACED) == -1)
+	if (waitpid(childPid, &childValue, WUNTRACED | WNOHANG) == -1)
 			return close(fd[0]), close(fd[1]), this->_statusCode = INTERNAL_SERVER_ERROR, setErrorPage();
 	if (WEXITSTATUS(childValue) == 1)
 		return close(fd[0]), close(fd[1]), this->_statusCode = INTERNAL_SERVER_ERROR, setErrorPage();
@@ -440,7 +450,8 @@ std::string  Requests::execCgi(const std::string& scriptType) {
 	close(fd[1]); 
     std::string scriptContent = readFromPipe(fd[0]);
 	close(fd[0]);
-	std::string line;
+	if (scriptContent.size() > 10000)
+		this->_statusCode = REQUEST_ENTITY_TOO_LARGE;
 	if (this->_statusCode != OK)
 		return setErrorPage();
 	return setResponseScript(scriptContent, "OK") + scriptContent;
@@ -483,25 +494,24 @@ std::string Requests::doUpload() {
         return setErrorPage();
     }
 	std::string bodyToUpload = this->_body;
-	int lineCount = 0, startPos = 0, endPos = 0;
-	while (lineCount < 4) {
-		endPos = bodyToUpload.find('\n', startPos);
-		endPos++;
-		bodyToUpload.erase(startPos, endPos);
-		lineCount++;
-	}
-	size_t lastLinePos = bodyToUpload.find_last_of('\n');
-	if (lastLinePos != std::string::npos)
-		bodyToUpload.erase(lastLinePos);
-	lastLinePos = bodyToUpload.find_last_of('\n');
-	if (lastLinePos != std::string::npos)
-		bodyToUpload.erase(lastLinePos);
+	size_t endPos = bodyToUpload.find("\r\n\r\n");
+	if (endPos != std::string::npos)
+		bodyToUpload.erase(0, endPos + 4);
+	size_t lastLinePos = bodyToUpload.find_last_of("\r\n");
+	if (endPos != std::string::npos)
+		bodyToUpload.erase(lastLinePos - 1, bodyToUpload.size());
+	lastLinePos = bodyToUpload.find_last_of("\r\n");
+	if (endPos != std::string::npos)
+		bodyToUpload.erase(lastLinePos - 1, bodyToUpload.size());
+	lastLinePos = bodyToUpload.find_last_of("\r\n");
+	if (endPos != std::string::npos)
+		bodyToUpload.erase(lastLinePos, bodyToUpload.size());
 	outFile << bodyToUpload;
 	outFile.close();
 	this->_path.erase(this->_path.find_last_of("/"), this->_path.size());
 	this->_path = this->_path + "/uploadSuccessful.html";
-	this->_statusCode = OK;
-	return getPage(this->_path, setResponse("OK"));
+	this->_statusCode = 201;
+	return getPage(this->_path, setResponse("Created"));
 }
 
 std::string Requests::deleteFiles() {
@@ -575,13 +585,11 @@ std::string Requests::getResponse() {
 		return "";
 	if (this->_method == "DELETE")
 		return doDelete();
-	if (this->_path.find(this->_uploadDir) != std::string::npos && this->_body != "")
+	if (this->_path.find(this->_uploadDir) != std::string::npos && this->_method == "POST" && this->_hasBody == MULTIPART)
 		return doUpload();
 	if (this->_path == "./pages/listFiles/delete.html")
 		return deleteFiles();
 	if (this->_statusCode == OK || this->_statusCode == FOUND) {
-		if (this->_statusCode == OK && this->_method == "POST" && this->_hasBody == MULTIPART)
-    		return doUpload();
 		if (this->_autoIndexFile != "")
 			return setResponseScript(this->_autoIndexFile, "OK") + this->_autoIndexFile;
 		std::vector<std::string> words = split(this->_path, ".");

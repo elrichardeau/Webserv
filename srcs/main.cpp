@@ -51,6 +51,8 @@ int main(int argc, char **argv) {
                 perror("epoll_wait");
                 exit(EXIT_FAILURE);
             }
+            if (num_fds == 0)
+                continue;
             for (int i = 0; i < num_fds; ++i) {
                 int index = manager.compareServerSocket(events[i].data.fd);
                 if (index != -1)
