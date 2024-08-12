@@ -407,6 +407,11 @@ std::string  Requests::execCgi(const std::string& scriptType) {
 	int fd[2];
 	int fdBody[2];
 	const char *scriptInterpreter;
+
+	if (scriptType.empty()) {
+		this->_statusCode = INTERNAL_SERVER_ERROR;
+		return setErrorPage();
+	}
 	if (pipe(fd) == -1)
 		return this->_statusCode = INTERNAL_SERVER_ERROR, setErrorPage();
 	childPid = fork();
@@ -433,14 +438,17 @@ std::string  Requests::execCgi(const std::string& scriptType) {
 			scriptInterpreter = this->_cgiPathPy.c_str();
 		else
 			scriptInterpreter = this->_cgiPathPhp.c_str();
+		if (!strlen(scriptInterpreter))
+			exit(EXIT_FAILURE);
 		char **env = vectorToCharArray(createCgiEnv());
 		char *args[] = { const_cast<char*>(scriptInterpreter), const_cast<char*>(_path.c_str()), NULL };
 		execve(scriptInterpreter, args, env);
 		delete [] env;
 		exit(EXIT_FAILURE);
 	}
-	if (waitpid(childPid, &childValue, WUNTRACED | WNOHANG) == -1)
+	if (waitpid(childPid, &childValue, WUNTRACED) == -1)
 			return close(fd[0]), close(fd[1]), this->_statusCode = INTERNAL_SERVER_ERROR, setErrorPage();
+	std::cout << WEXITSTATUS(childValue) << std::endl;
 	if (WEXITSTATUS(childValue) == 1)
 		return close(fd[0]), close(fd[1]), this->_statusCode = INTERNAL_SERVER_ERROR, setErrorPage();
 	if (!this->_method.compare("POST")) {
@@ -577,10 +585,14 @@ bool Requests::getBody(const std::string &add) {
 }
 
 std::string Requests::getResponse() {
-	if (this->_body.size() != 0 && this->_body.size() != static_cast<size_t>(this->_lenOfBody))
+	if (this->_body.size() != 0 && this->_body.size() != static_cast<size_t>(this->_lenOfBody)) {
 		this->_statusCode = BAD_REQUEST;
-	if (this->_body.size() > this->_servParam.getClientMaxBodySize())
+		return setErrorPage();
+	}
+	if (this->_body.size() > this->_servParam.getClientMaxBodySize()) {
 		this->_statusCode = BAD_REQUEST;
+		return setErrorPage();
+	}
 	if (!this->_paramValid)
 		return "";
 	if (this->_method == "DELETE")

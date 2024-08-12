@@ -518,6 +518,15 @@ void Config::processLine(ServerConfig &currentServer, LocationConfig &currentLoc
 
 void Config::readConfig(const std::string &filename)
 {
+    if (filename.find('.') == std::string::npos)
+        throw InvalidConfig("Error: Wrong configuration file.");
+    else {
+        std::vector<std::string> parseName = split(filename, '.');
+        if (parseName.size() != 2)
+            throw InvalidConfig("Error: Wrong configuration file.");
+        if (parseName[1] != "conf")
+            throw InvalidConfig("Error: Wrong configuration file.");
+    }
     if (access(filename.c_str(), R_OK) == -1)
         throw InvalidConfig("Error: Access denied or file does not exist.");
     std::ifstream file(filename.c_str());
