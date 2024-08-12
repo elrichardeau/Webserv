@@ -64,6 +64,7 @@ class Requests {
 		std::string _contentType;
 		Server _servParam;
 		bool _paramValid;
+		std::vector<std::string> _cgiExtensions;
 		std::string _cgiPathPy;
 		std::string _cgiPathPhp;
 		std::string _body;

@@ -107,6 +107,7 @@ void Requests::getRootPath(const std::string &path) {
 			this->_redirection = tmp[i].getReturnDirective();
 			this->_cgiPathPy = "";
 			this->_cgiPathPhp = "";
+			this->_cgiExtensions = tmp[i].getCgiExtensions();
 			std::map<std::string, std::string> temp = tmp[i].getCgiPaths();
 			for (std::map<std::string, std::string>::iterator it = temp.begin(); it != temp.end(); it++) {
 				if (it->first == ".py")
@@ -408,8 +409,8 @@ std::string  Requests::execCgi(const std::string& scriptType) {
 	int fdBody[2];
 	const char *scriptInterpreter;
 
-	if (scriptType.empty()) {
-		this->_statusCode = INTERNAL_SERVER_ERROR;
+	if (!(this->_cgiPathPhp != "" && this->_cgiPathPy != "")) {
+		this->_statusCode = NOT_IMPLEMENTED;
 		return setErrorPage();
 	}
 	if (pipe(fd) == -1)
@@ -438,17 +439,14 @@ std::string  Requests::execCgi(const std::string& scriptType) {
 			scriptInterpreter = this->_cgiPathPy.c_str();
 		else
 			scriptInterpreter = this->_cgiPathPhp.c_str();
-		if (!strlen(scriptInterpreter))
-			exit(EXIT_FAILURE);
 		char **env = vectorToCharArray(createCgiEnv());
 		char *args[] = { const_cast<char*>(scriptInterpreter), const_cast<char*>(_path.c_str()), NULL };
 		execve(scriptInterpreter, args, env);
 		delete [] env;
 		exit(EXIT_FAILURE);
 	}
-	if (waitpid(childPid, &childValue, WUNTRACED) == -1)
+	if (waitpid(childPid, &childValue, WUNTRACED | WNOHANG) == -1)
 			return close(fd[0]), close(fd[1]), this->_statusCode = INTERNAL_SERVER_ERROR, setErrorPage();
-	std::cout << WEXITSTATUS(childValue) << std::endl;
 	if (WEXITSTATUS(childValue) == 1)
 		return close(fd[0]), close(fd[1]), this->_statusCode = INTERNAL_SERVER_ERROR, setErrorPage();
 	if (!this->_method.compare("POST")) {
@@ -610,11 +608,18 @@ std::string Requests::getResponse() {
 			return setErrorPage();
 		}
 		if (words[words.size() - 1] == "py" || words[words.size() - 1] == "php") {
-			if (access((this->_path).c_str(), X_OK)) {
-				this->_statusCode = FORBIDDEN;
-				return setErrorPage();
+			std::vector<std::string> ext = this->_cgiExtensions;
+			for (size_t i = 0; i < ext.size(); i++) {
+				if (words[words.size() - 1] == ext[i]) {
+					if (access((this->_path).c_str(), X_OK)) {
+						this->_statusCode = FORBIDDEN;
+						return setErrorPage();
+					}
+					return execCgi(ext[i]);
+				}
 			}
-			return execCgi(words[words.size() - 1]);
+			this->_statusCode = NOT_IMPLEMENTED;
+			return setErrorPage();
 		}
 		if (this->_statusCode == FOUND)
 			return getPage(this->_path, setResponse("Found"));
