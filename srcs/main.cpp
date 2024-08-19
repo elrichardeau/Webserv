@@ -16,11 +16,11 @@
 
 #define MAX_EVENTS 10
 
-int signalCode = 1;
+volatile sig_atomic_t signalCode = true;
 
 void signalHandler(int code) {
     if (code == SIGINT)
-        signalCode = 0;
+        signalCode = false;
 }
 
 int main(int argc, char **argv) {
@@ -30,7 +30,7 @@ int main(int argc, char **argv) {
         if (argc == 2)
             filename = argv[1];
         else
-            filename = "server.conf";
+            filename = "conf/server.conf";
     }
     try {
         Config config(filename);
@@ -67,8 +67,5 @@ int main(int argc, char **argv) {
         std::cerr << e.what() << std::endl;
         return EXIT_FAILURE; 
     }
-    close(STDIN_FILENO);
-    close(STDOUT_FILENO);
-    close(STDERR_FILENO);
     return 0;
 }

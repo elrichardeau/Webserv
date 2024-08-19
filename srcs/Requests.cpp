@@ -1,34 +1,15 @@
 
 #include "../includes/Requests.hpp"
 
-std::string itostr(int nb) {
-	std::stringstream ss;
-	std::string str;
-	ss << nb;
-	ss >> str;
-	return str;
-}
-
-std::vector<std::string> split(std::string buf, const std::string &find) {
-	std::vector<std::string> vector;
-	if (buf.find(find) == std::string::npos) {
-		vector.push_back(buf.substr(0, buf.size()));
-		return vector;
-	}
-	for (int i = 0; !buf.empty(); i++) {
-		vector.push_back(buf.substr(0, buf.find(find)));
-		buf.erase(0, vector[i].size() + 1);
-	}
-	return vector;
-}
-
 bool isSyntaxGood(std::vector<std::string> &request) {
 	size_t find;
 	if (request.empty() || request[0].empty() || split(request[0], " ").size() != 3)
 		return false;
 	for (size_t i = 0; i < request.size(); i++) {
-		if (request[i] == "\r")
+		if (request[i] == "\r" && i == request.size() - 1) {
+			request.resize(i);
 			break;
+		}
 		find = request[i].find("\r");
 		if (find == std::string::npos)
 			return false;
@@ -38,6 +19,96 @@ bool isSyntaxGood(std::vector<std::string> &request) {
 			return false;
 	}
 	return true;
+}
+
+std::map<std::string, std::string> getHeaders(const std::string &request) {
+	std::vector<std::string> headersData = split(request, "\n");
+	if (!isSyntaxGood(headersData))
+		return std::map<std::string, std::string>();
+	std::map<std::string, std::string> headers;
+	std::vector<std::string> methodPathProtocol = split(headersData[0], " ");
+	headers.insert(std::make_pair("Method", methodPathProtocol[0]));
+	headers.insert(std::make_pair("Path", methodPathProtocol[1]));
+	headers.insert(std::make_pair("Protocol", methodPathProtocol[2]));
+	for (size_t i = 1; i < headersData.size(); i++)
+		headers.insert(std::make_pair(headersData[i].substr(0, headersData[i].find(": ")), headersData[i].substr(headersData[i].find(": ") + 2, headersData[i].size())));
+	return headers;
+}
+
+std::string createBadRequestResponse(std::vector<Server> manager, int serverSocket) {
+	Server servParam;
+	for (std::vector<Server>::iterator it = manager.begin(); it != manager.end(); it++) {
+		if (it->getServerSocket() == serverSocket) {
+			servParam = *it;
+			break;
+		}
+	}
+	ErrorPage err = servParam.getErrorPage();
+	std::string response;
+	struct stat buf;
+	int st = stat(err.getPath(BAD_REQUEST).c_str(), &buf);
+	response.append(err.getProtocol() + " " + itostr(BAD_REQUEST) + " " + err.getErrorMessage(BAD_REQUEST) + "\n");
+	response.append("Connection: Keep-Alive\n");
+	if (st != -1) {
+		size_t bytes = buf.st_size;
+		response.append("Content-Length: ");
+		response.append(itostr(bytes));
+		response.append("\n");
+	}
+	response.append("Content-Location: " + err.getPath(BAD_REQUEST).substr(1, err.getPath(BAD_REQUEST).size()) + "\n");
+	response.append("Content-Type: " + err.getContentType() + "\n");
+	if (st != -1) {
+		response.append("Date: ");
+		response.append(ctime(&buf.st_atime));
+		response.append("Last-Modified: ");
+		response.append(ctime(&buf.st_mtime));
+	}
+	response.append("Server: Webserv\n");
+	response.append("\n");
+	response.append(getPage(err.getPath(BAD_REQUEST)));
+	return response;
+}
+
+std::string createErrorResponse(ErrorPage err, int code) {
+	std::string response;
+	struct stat buf;
+	int st = stat(err.getPath(code).c_str(), &buf);
+	response.append(err.getProtocol() + " " + itostr(code) + " " + err.getErrorMessage(code) + "\n");
+	response.append("Connection: Keep-Alive\n");
+	if (st != -1) {
+		size_t bytes = buf.st_size;
+		response.append("Content-Length: ");
+		response.append(itostr(bytes));
+		response.append("\n");
+	}
+	response.append("Content-Location: " + err.getPath(code).substr(1, err.getPath(code).size()) + "\n");
+	response.append("Content-Type: " + err.getContentType() + "\n");
+	if (st != -1) {
+		response.append("Date: ");
+		response.append(ctime(&buf.st_atime));
+		response.append("Last-Modified: ");
+		response.append(ctime(&buf.st_mtime));
+	}
+	response.append("Server: Webserv\n");
+	response.append("\n");
+	response.append(getPage(err.getPath(code)));
+	return response;
+}
+
+BodyType getBodyType(const std::string &length, const std::string &encoding, const std::string &type) {
+	if (encoding == "chunked")
+		return CHUNKED;
+	if (type == "application/x-www-form-urlencoded")
+		return SIMPLE;
+	if (type.find("multipart/form-data; boundary=") != std::string::npos)
+		return MULTIPART;
+	if (length != "")
+		return SIMPLE;
+	return NOTHING;
+}
+
+void Requests::getBody(std::vector<unsigned char> buf) {
+	this->_body.insert(this->_body.end(), buf.begin(), buf.end());
 }
 
 std::vector<std::string> getAccept(std::string line) {
@@ -59,46 +130,60 @@ std::vector<std::string> getAccept(std::string line) {
 	return accept;
 }
 
-void Requests::getQuery() {
+std::string Requests::setUrlPath() {
+	std::string urlPath = this->_path;
+	if (urlPath.find_last_of("/") != urlPath.size() - 1)
+		urlPath.append("/");
+	return urlPath;
+}
+
+std::string Requests::setQuery() {
+	std::string query;
 	size_t find = this->_path.find("?");
 	if (find != std::string::npos) {
-		this->_query = this->_path.substr(find + 1, this->_path.size());
+		query = this->_path.substr(find + 1, this->_path.size());
 		this->_path.erase(find, this->_path.size());
-
 	}
+	return query;
 }
 
-Server Requests::findServerWithSocket(std::vector<Server> manager, int serverSocket, std::string serverName) {
-	size_t find = serverName.find(":");
-	if (find != std::string::npos)
-		serverName.erase(find, serverName.size());
-	if (serverName == "localhost" || isValidIPAddress(serverName)) {
-		for (std::vector<Server>::iterator it = manager.begin(); it != manager.end(); it++)
-			if (it->getServerSocket() == serverSocket)
-				return *it;
-	}
-	else
-		for (std::vector<Server>::iterator it = manager.begin(); it != manager.end(); it++)
-			if (it->getServerSocket() == serverSocket && it->getServerName() == serverName)
-				return *it;
-	this->_paramValid = 0;
-	return manager[0];
+Requests::Requests(Server &servParam, std::map<std::string, std::string> &headers, std::vector<unsigned char> &body, const std::string &lenOfBody, BodyType bodyType) :
+	_servParam(servParam), _protocol(headers["Protocol"]), _method(headers["Method"]), _path(headers["Path"]), _urlPath(setUrlPath()),
+	_query(setQuery()), _accept(getAccept(headers["Accept"])), _body(body), _lenOfBody(atoi(lenOfBody.c_str())), _bodyType(bodyType) {}
+
+Requests::~Requests() {}
+
+BodyType Requests::getBodyType() {
+	if (this->_body.size() >= this->_lenOfBody)
+		return NOTHING;
+	return this->_bodyType;
 }
 
-void Requests::getRootPath(const std::string &path) {
-	this->_urlPath = path;
-	if (this->_urlPath.find_last_of("/") != this->_urlPath.size() - 1)
-		this->_urlPath.append("/");
-	this->_path = path;
-	getQuery();
+bool Requests::isMethodAllowed() {
+	for (size_t i = 0; i < this->_allowMethod.size(); i++) {
+		if (this->_allowMethod[i] == this->_method)
+			return true;
+	}
+	return false;
+}
+
+void Requests::checkData() {
+	if (this->_protocol != "HTTP/1.1")
+		throw ErrorCode(itostr(HTTP_VERSION_NOT_SUPPORTED));
+	if (!isMethodAllowed())
+		throw ErrorCode(itostr(METHOD_NOT_ALLOWED));
+	if (this->_body.size() > this->_servParam.getClientMaxBodySize())
+		throw ErrorCode(itostr(BAD_REQUEST));
+}
+
+void Requests::setLocations() {
 	std::vector<LocationConfig> tmp = this->_servParam.getLocations();
-	std::string firstPath;
-	if (path == "/")
-		firstPath = path + "/";
-	else
-		firstPath = "/" + split(path, "/")[1] + "/";
+	std::string firstPath = this->_path;
+	size_t find = firstPath.find("/", 1);
+	if (find != std::string::npos)
+		firstPath.erase(find, firstPath.size());
 	for (size_t i = 0; i < tmp.size(); i++) {
-		if (!(tmp[i].getPath() + "/").compare(0, firstPath.size(), firstPath)) {
+		if (!(tmp[i].getPath()).compare(0, firstPath.size(), firstPath)) {
 			this->_allowMethod = tmp[i].getAllowMethods();
 			this->_index = tmp[i].getIndex();
 			this->_autoIndex = tmp[i].getautoIndex();
@@ -115,7 +200,6 @@ void Requests::getRootPath(const std::string &path) {
 				else if (it->first == ".php")
 					this->_cgiPathPhp = it->second;
 			}
-			this->_autoIndexFile = "";
 			return;
 		}
 	}
@@ -127,114 +211,14 @@ void Requests::getRootPath(const std::string &path) {
 	this->_redirection = "";
 	this->_cgiPathPy = "";
 	this->_cgiPathPhp = "";
-	this->_autoIndexFile = "";
 }
 
-void Requests::createAutoIndexFile() {
-	std::vector<std::string> response;
-	DIR *dir = opendir(this->_path.c_str());
-	if (dir == NULL) {
-		this->_statusCode = INTERNAL_SERVER_ERROR;
-		return;
-	}
-	for (dirent *dirData = readdir(dir); dirData != NULL; dirData = readdir(dir)) {
-		response.push_back(dirData->d_name);
-	}
-	closedir(dir);
-	std::sort(response.begin(), response.end());
-	this->_autoIndexFile.append("<!DOCTYPE html>");
-	this->_autoIndexFile.append("<html>");
-	this->_autoIndexFile.append("<head>");
-	this->_autoIndexFile.append("<meta charset=\"utf-8\" />");
-	this->_autoIndexFile.append("<html lang=\"en\"></html>");
-	this->_autoIndexFile.append("<link rel=\"stylesheet\" type=\"text/css\" href=\"/stylesAutoIndex.css\" />");
-	this->_autoIndexFile.append("<title>" + this->_path + "</title>");
-	this->_autoIndexFile.append("</head>");
-	this->_autoIndexFile.append("<body>");
-	this->_autoIndexFile.append("<h1>" + this->_path + "</h1>");
-	this->_autoIndexFile.append("<ul>");
-	for (size_t i = 0; i < response.size(); i++) {
-		this->_autoIndexFile.append("<li><a href=" + this->_urlPath + response[i] + ">" + response[i] + "</a></li>");
-	}
-	this->_autoIndexFile.append("</ul>");
-	this->_autoIndexFile.append("</body>");
-	this->_autoIndexFile.append("</html>");
-}
-
-void Requests::setPath() {
-	if (this->_path == "/favicon.ico") {
-		this->_statusCode = OK;
-		this->_path = "./pages/favicon.ico";
-		return;
-	}
-	if (this->_redirection != "") {
-		std::vector<std::string> redirection = split(this->_redirection, " ");
-		this->_statusCode = std::atoi(redirection[0].c_str());
-		if (this->_statusCode != FOUND) {
-			this->_statusCode = NOT_IMPLEMENTED;
-			return;
-		}
-		this->_path = "." + redirection[1];
-		if (access(this->_path.c_str(), F_OK))
-			this->_statusCode = NOT_FOUND;
-		else if (access(this->_path.c_str(), R_OK))
-			this->_statusCode = FORBIDDEN;
-		return;
-	}
-	this->_path = "." + this->_root + this->_path;
-	DIR *dir = opendir(this->_path.c_str());
-	if (dir != NULL) {
-		closedir(dir);
-		for (size_t i = 0; i < this->_index.size(); i++) {
-			if (!access((this->_path + this->_index[i]).c_str(), F_OK | R_OK)) {
-				this->_path.append(this->_index[i]);
-				this->_statusCode = OK;
-				return;
-			}
-		}
-		if (this->_autoIndex) {
-			this->_statusCode = OK;
-			createAutoIndexFile();
-			return;
-		}
-		else {
-			this->_statusCode = FORBIDDEN;
-			return;
-		}
-	}
-	else if (access(this->_path.c_str(), F_OK)) {
-		this->_statusCode = NOT_FOUND;
-		return;
-	}
-	else if (access(this->_path.c_str(), R_OK)) {
-		this->_statusCode = FORBIDDEN;
-		return;
-	}
-	this->_statusCode = OK;
-}
-
-bool Requests::isMethodAllowed() {
-	for (size_t i = 0; i < this->_allowMethod.size(); i++) {
-		if (this->_allowMethod[i] == this->_method)
-			return true;
-	}
-	return false;
-}
-
-void Requests::setContentType() {
-	if (this->_autoIndexFile != "") {
-		this->_contentType = "text/html";
-		return;
-	}
+void Requests::getContentType() {
 	bool all = false;
 	size_t find = this->_path.find_last_of(".");
 	if (find != std::string::npos) {
 		std::string extension = this->_path.substr(find + 1, this->_path.size());
-		if (extension == "php" || extension == "py") {
-			this->_contentType = "text/html";
-			return;
-		}
-		for (unsigned int i = 0; i < this->_accept.size(); i++) {
+		for (size_t i = 0; i < this->_accept.size(); i++) {
 			size_t find = this->_accept[i].find("/");
 			if (find != std::string::npos) {
 				std::string type = this->_accept[i].substr(find + 1, this->_accept[i].size());
@@ -263,380 +247,208 @@ void Requests::setContentType() {
 			return;
 		}
 	}
-	this->_statusCode = NOT_ACCEPTABLE;
+	throw ErrorCode(itostr(NOT_ACCEPTABLE));
 }
 
-void Requests::setBodyType(const std::string &length, const std::string &encoding, const std::string &type) {
-	this->_lenOfBody = -1;
-	if (encoding == "chunked") {
-		this->_hasBody = CHUNKED;
-		this->_lenOfBody = 0;
-		return;
-	}
-	if (type == "application/x-www-form-urlencoded") {
-		this->_hasBody = CLASSIC;
-		this->_lenOfBody = std::atoi(length.c_str());
-		return;
-	}
-	if (type.find("multipart/form-data; boundary=") != std::string::npos) {
-		this->_hasBody = MULTIPART;
-		this->_lenOfBody = std::atoi(length.c_str());
-		this->_boundary = type.substr(type.find("=-"), type.size());
-		return;
-	}
-	if (length != "") {
-		this->_hasBody = CLASSIC;
-		this->_lenOfBody = std::atoi(length.c_str());
-		return;
-	}
-	if (this->_hasBody == UNDEFINED)
-		this->_statusCode = BAD_REQUEST;
-	this->_hasBody = NO_ONE;
+void Requests::checkPermissionPath() {
+	if (access(this->_path.c_str(), F_OK))
+		throw ErrorCode(itostr(NOT_FOUND));
+	else if (access(this->_path.c_str(), R_OK))
+		throw ErrorCode(itostr(FORBIDDEN));
 }
 
-Requests::Requests(const std::string &buf, std::vector<Server> manager, int serverSocket) {
-	std::vector<std::string> bufSplitted = split(buf, "\n");
-	if (!isSyntaxGood(bufSplitted)) {
-		this->_paramValid = 1;
-		this->_servParam = findServerWithSocket(manager, serverSocket, "localhost");
-		this->_statusCode = BAD_REQUEST;
-	}
-	else {
-		this->_hasBody = NO_ONE;
-		std::map<std::string, std::string> request;
-		std::vector<std::string> methodPathProtocol = split(bufSplitted[0], " ");
-		request.insert(std::make_pair("Method", methodPathProtocol[0]));
-		request.insert(std::make_pair("Path", methodPathProtocol[1]));
-		request.insert(std::make_pair("Protocol", methodPathProtocol[2]));
-		for (size_t i = 1; i < bufSplitted.size(); i++) {
-			if (this->_hasBody || (bufSplitted[i] == "\r" && i + 1 != bufSplitted.size())) {
-				this->_hasBody = UNDEFINED;
-				this->_body = buf.substr(buf.find("\r\n\r\n") + 4, buf.size());
-				break;
-			}
-			else
-				request.insert(std::make_pair(bufSplitted[i].substr(0, bufSplitted[i].find(": ")), bufSplitted[i].substr(bufSplitted[i].find(": ") + 2, bufSplitted[i].size())));
-		}
-		this->_paramValid = 1;
-		this->_servParam = findServerWithSocket(manager, serverSocket, request["Host"]);
-		setBodyType(request["Content-Length"], request["Transfer-Encoding"], request["Content-Type"]);
-		if (this->_paramValid) {
-			this->_protocol = request["Protocol"];
-			if (this->_protocol != "HTTP/1.1")
-				this->_statusCode = HTTP_VERSION_NOT_SUPPORTED;
-			else {
-				getRootPath(request["Path"]);
-				this->_method = request["Method"];
-				if (!isMethodAllowed())
-					this->_statusCode = METHOD_NOT_ALLOWED;
-				else {
-					setPath();
-					if (this->_statusCode == OK || this->_statusCode == FOUND) {
-						this->_accept = getAccept(request["Accept"]);
-						setContentType();
-					}
-				}
-			}
-		}
-	}
+std::string Requests::setResponse(StatusCode statusCode) {
+	checkPermissionPath();
+	this->_statusCode = statusCode;
+	getContentType();
+	std::string statusCodeName;
+	if (statusCode == CREATED)
+		statusCodeName = "Created";
+	else if (statusCode == FOUND)
+		statusCodeName = "Found";
+	else
+		statusCodeName = "OK";
+	return setHeaders(statusCodeName) + getPage(this->_path);
 }
 
-Requests::~Requests() {}
-
-std::string getPage(std::string filename, std::string responseStatus) {
-	std::ifstream fd(filename.c_str());
-    std::string line;
-	std::string response = responseStatus;
-    while (getline(fd, line))
-        response.append(line + "\n");
-    fd.close();
-	return response;
+std::string Requests::setFaviconResponse() {
+	this->_path = "./pages/favicon.ico";
+	return setResponse(OK);
 }
 
-std::string Requests::readFromPipe(int pipeFd) {
-	char buffer[4096];
-	ssize_t bytesRead = read(pipeFd, buffer, 4096 - 1);
-	if (bytesRead == -1) {
-		this->_statusCode = INTERNAL_SERVER_ERROR;
-		return "";
-	}
-	std::string result;
-	time_t t = time(NULL);
-	while (bytesRead > 0 && t + 2 > time(NULL)) {
-		buffer[bytesRead] = '\0';
-		result += buffer;
-		bytesRead = read(pipeFd, buffer, 4096 - 1);
-		if (bytesRead == -1) {
-			this->_statusCode = INTERNAL_SERVER_ERROR;
-			return "";
-		}
-	}
-	return result;
+std::string Requests::setRedirectionResponse() {
+	std::vector<std::string> redirection = split(this->_redirection, " ");
+	this->_statusCode = static_cast<StatusCode>(std::atoi(redirection[0].c_str()));
+	if (this->_statusCode != FOUND)
+		throw ErrorCode(itostr(NOT_IMPLEMENTED));
+	this->_path = "." + redirection[1];
+	return setResponse(FOUND);
 }
 
-char **Requests::vectorToCharArray(const std::vector<std::string> &vector) {
-	char** arr = new char*[vector.size() + 1];
-	for (size_t i = 0; i < vector.size(); i++) {
-		arr[i] = new char[vector[i].size() + 1];
-		std::copy(vector[i].begin(), vector[i].end(), arr[i]);
-		arr[i][vector[i].size()] = '\0';
+bool Requests::isFolder() {
+	DIR *dir = opendir(this->_path.c_str());
+	if (dir != NULL) {
+		closedir(dir);
+		return true;
 	}
-	arr[vector.size()] = NULL;
-	return arr;
+	return false;
 }
 
-static void exportVar(std::vector<std::string> &env, const std::string&key, const std::string& value) {env.push_back(key + '=' + value);}
-
-std::vector<std::string> Requests::createCgiEnv() {
-	std::vector<std::string> env;
-	exportVar(env, "REQUEST_METHOD", this->_method);
-	exportVar(env, "SCRIPT_NAME", "response.php");
-	exportVar(env, "SERVER_PROTOCOL", "HTTP/1.1");
-	exportVar(env, "SERVER_SOFTWARE", "webserv/1.1");
-	if (!this->_method.compare("GET"))
-		exportVar(env, "QUERY_STRING", this->_query);
-	else if (!this->_method.compare("POST")) {
-		exportVar(env, "CONTENT_LENGTH", itostr(this->_body.size()));
-		exportVar(env, "CONTENT_TYPE", "application/x-www-form-urlencoded");
+std::string Requests::createAutoIndexFile() {
+	std::vector<std::string> files;
+	DIR *dir = opendir(this->_path.c_str());
+	if (dir == NULL)
+		throw ErrorCode(itostr(INTERNAL_SERVER_ERROR));
+	for (dirent *dirData = readdir(dir); dirData != NULL; dirData = readdir(dir)) {
+		files.push_back(dirData->d_name);
 	}
-	return env;
-}
-
-std::string  Requests::execCgi(const std::string& scriptType) {
-	int childPid;
-	int childValue;
-	int fd[2];
-	int fdBody[2];
-	const char *scriptInterpreter;
-
-	if (!(this->_cgiPathPhp != "" && this->_cgiPathPy != "")) {
-		this->_statusCode = NOT_IMPLEMENTED;
-		return setErrorPage();
-	}
-	if (pipe(fd) == -1)
-		return this->_statusCode = INTERNAL_SERVER_ERROR, setErrorPage();
-	childPid = fork();
-	if (childPid == -1)
-		return this->_statusCode = INTERNAL_SERVER_ERROR, setErrorPage();
-	if (!this->_method.compare("POST")) {
-		if (pipe(fdBody) == -1)
-			return this->_statusCode = INTERNAL_SERVER_ERROR, setErrorPage();
-		if (write(fdBody[1], this->_body.c_str(), static_cast<int>(this->_body.size())) == -1)
-			return this->_statusCode = INTERNAL_SERVER_ERROR, setErrorPage();
-	}
-	if (!childPid) {
-		if (!this->_method.compare("POST")) {
-			close(fdBody[1]);
-			if (dup2(fdBody[0], STDIN_FILENO))
-				exit(EXIT_FAILURE);
-			close(fdBody[0]);
-		}
-		close(fd[0]);
-		if (dup2(fd[1], STDOUT_FILENO) == -1) 
-			exit(EXIT_FAILURE);
-		close(fd[1]);
-		if (!scriptType.compare("py"))
-			scriptInterpreter = this->_cgiPathPy.c_str();
-		else
-			scriptInterpreter = this->_cgiPathPhp.c_str();
-		char **env = vectorToCharArray(createCgiEnv());
-		char *args[] = { const_cast<char*>(scriptInterpreter), const_cast<char*>(_path.c_str()), NULL };
-		execve(scriptInterpreter, args, env);
-		delete [] env;
-		exit(EXIT_FAILURE);
-	}
-	if (waitpid(childPid, &childValue, WUNTRACED | WNOHANG) == -1)
-			return close(fd[0]), close(fd[1]), this->_statusCode = INTERNAL_SERVER_ERROR, setErrorPage();
-	if (WEXITSTATUS(childValue) == 1)
-		return close(fd[0]), close(fd[1]), this->_statusCode = INTERNAL_SERVER_ERROR, setErrorPage();
-	if (!this->_method.compare("POST")) {
-		close(fdBody[0]);
-		close(fdBody[1]);
-	}
-	close(fd[1]); 
-    std::string scriptContent = readFromPipe(fd[0]);
-	close(fd[0]);
-	if (scriptContent.size() > 10000)
-		this->_statusCode = REQUEST_ENTITY_TOO_LARGE;
-	if (this->_statusCode != OK)
-		return setErrorPage();
-	return setResponseScript(scriptContent, "OK") + scriptContent;
-}
-
-std::string Requests::doUpload() {
-	DIR *dirFd = opendir(this->_uploadDir.c_str());
-	if (!dirFd) {
-		this->_statusCode = BAD_REQUEST;
-		return setErrorPage();
-	}
-	closedir(dirFd);
-	size_t posFilename = this->_body.find("filename=");
-	if (posFilename == std::string::npos) {
-		this->_statusCode = BAD_REQUEST;
-		return setErrorPage();
-	}
-	posFilename += 10;
-	size_t endFilename = this->_body.find("\"", posFilename);
-	if (endFilename == std::string::npos) {
-		this->_statusCode = BAD_REQUEST;
-		return setErrorPage();
-	}
-	std::string filename = this->_body.substr(posFilename, endFilename - posFilename);
-	std::string filePath = this->_uploadDir + "/" + filename;
-
-    int count = 1;
-    std::string newFilePath = filePath;
-    size_t dotPosition = filename.find_last_of(".");
-    std::string baseName = filename.substr(0, dotPosition);
-    std::string extension = (dotPosition != std::string::npos) ? filename.substr(dotPosition) : "";
-    while (std::ifstream(newFilePath.c_str()).is_open()) {
-        std::stringstream ss;
-        ss << this->_uploadDir << "/" << baseName << "_" << count++ << extension;
-        newFilePath = ss.str();
-    }
-    std::ofstream outFile(newFilePath.c_str(), std::ios::binary);
-    if (!outFile.is_open()) {
-        this->_statusCode = INTERNAL_SERVER_ERROR;
-        return setErrorPage();
-    }
-	std::string bodyToUpload = this->_body;
-	size_t endPos = bodyToUpload.find("\r\n\r\n");
-	if (endPos != std::string::npos)
-		bodyToUpload.erase(0, endPos + 4);
-	size_t lastLinePos = bodyToUpload.find_last_of("\r\n");
-	if (endPos != std::string::npos)
-		bodyToUpload.erase(lastLinePos - 1, bodyToUpload.size());
-	lastLinePos = bodyToUpload.find_last_of("\r\n");
-	if (endPos != std::string::npos)
-		bodyToUpload.erase(lastLinePos - 1, bodyToUpload.size());
-	lastLinePos = bodyToUpload.find_last_of("\r\n");
-	if (endPos != std::string::npos)
-		bodyToUpload.erase(lastLinePos, bodyToUpload.size());
-	outFile << bodyToUpload;
-	outFile.close();
-	this->_path.erase(this->_path.find_last_of("/"), this->_path.size());
-	this->_path = this->_path + "/uploadSuccessful.html";
-	this->_statusCode = 201;
-	return getPage(this->_path, setResponse("Created"));
-}
-
-std::string Requests::deleteFiles() {
-	this->_statusCode = OK;
-	std::vector<std::string> response;
-	std::string page;
-	DIR *dir = opendir(this->_uploadDir.c_str());
-	if (dir == NULL) {
-		this->_statusCode = INTERNAL_SERVER_ERROR;
-		return setErrorPage();
-	}
-	for (dirent *dirData = readdir(dir); dirData != NULL; dirData = readdir(dir))
-		response.push_back(dirData->d_name);
 	closedir(dir);
-	std::sort(response.begin(), response.end());
-	page.append("<!DOCTYPE html>");
-	page.append("<html>");
-	page.append("<head>");
-	page.append("<meta charset=\"utf-8\" />");
-	page.append("<html lang=\"en\"></html>");
-	page.append("<link rel=\"stylesheet\" type=\"text/css\" href=\"/stylesAutoIndex.css\" />");
-	page.append("<title>Delete</title>");
-	page.append("</head>");
-	page.append("<body>");
-	page.append("<h1>Choose files :</h1>");
-	page.append("<ul>");
-	this->_uploadDir.erase(0, this->_root.size() + 1);
-	for (size_t i = 0; i < response.size(); i++) {
-		if (response[i] != "." && response[i] != "..") {
-			page.append("<li>");
-			page.append("<a class=\"file\" href=" + this->_uploadDir + "/" + response[i] + ">" + response[i] + "</a>");
-			page.append("<button class=\"delete-button\" data-url=" + this->_uploadDir + "/" + response[i] + ">&#10005;</button>");
-			page.append("</li>");
+	std::sort(files.begin(), files.end());
+	std::string autoIndexFile;
+	autoIndexFile.append("<!DOCTYPE html>");
+	autoIndexFile.append("<html>");
+	autoIndexFile.append("<head>");
+	autoIndexFile.append("<meta charset=\"utf-8\" />");
+	autoIndexFile.append("<html lang=\"en\"></html>");
+	autoIndexFile.append("<link rel=\"stylesheet\" type=\"text/css\" href=\"/stylesAutoIndex.css\" />");
+	autoIndexFile.append("<title>" + this->_path + "</title>");
+	autoIndexFile.append("</head>");
+	autoIndexFile.append("<body>");
+	autoIndexFile.append("<h1>" + this->_path + "</h1>");
+	autoIndexFile.append("<ul>");
+	for (size_t i = 0; i < files.size(); i++)
+		autoIndexFile.append("<li><a href=" + this->_urlPath + files[i] + ">" + files[i] + "</a></li>");
+	autoIndexFile.append("</ul>");
+	autoIndexFile.append("</body>");
+	autoIndexFile.append("</html>");
+	return autoIndexFile;
+}
+
+std::string Requests::setAutoIndexFile() {
+	std::string autoIndexFile = createAutoIndexFile();
+	this->_statusCode = OK;
+	this->_contentType = "text/html";
+	return setHeadersForScript(autoIndexFile, "OK") + autoIndexFile;
+}
+
+std::string Requests::setFolderResponse() {
+	for (size_t i = 0; i < this->_index.size(); i++) {
+		if (!access((this->_path + this->_index[i]).c_str(), F_OK | R_OK)) {
+			this->_path.append(this->_index[i]);
+			return setResponse(OK);
 		}
 	}
-	page.append("</ul>");
-	page.append("<script src=\"delete.js\"></script>");
-	page.append("<div class=\"index\">");
-	page.append("<a class=\"indexButton\" href=\"../index.html\">Index</a>");
-	page.append("</div>");
-	page.append("</body>");
-	page.append("</html>");
-	return setResponseScript(page, "OK") + page;
+	if (this->_autoIndex)
+		return setAutoIndexFile();
+	throw ErrorCode(itostr(FORBIDDEN));
 }
 
-std::string Requests::doDelete() {
-	if (std::remove(this->_path.c_str()) == -1) {
-		this->_statusCode = INTERNAL_SERVER_ERROR;
-		return setErrorPage();
+std::string Requests::getScriptExtension() {
+	std::vector<std::string> words = split(this->_path, ".");
+	if (words.size() == 1)
+		throw ErrorCode(itostr(BAD_REQUEST));
+	if (words[words.size() - 1] == "py" || words[words.size() - 1] == "php") {
+		std::vector<std::string> ext = this->_cgiExtensions;
+		for (size_t i = 0; i < ext.size(); i++) {
+			if (words[words.size() - 1] == ext[i])
+				return ext[i];
+		}
 	}
-	this->_statusCode = OK;
-	this->_path = "./pages/listFiles/deleteSuccessful.html";
-	return getPage(this->_path, setResponse("OK"));
+	return "";
 }
 
-bool Requests::getBody(const std::string &add) {
-	if (!this->_hasBody)
-		return false;
-	if (this->_body.size() == static_cast<size_t>(this->_lenOfBody))
-		return false;
-	this->_body.append(add);
-	return true;
+std::string Requests::setScriptResponse(const std::string &extension) {
+	std::string scriptInterpreter;
+	if (extension == "py")
+		scriptInterpreter = this->_cgiPathPy;
+	else
+		scriptInterpreter = this->_cgiPathPhp;
+	Cgi script(this->_method, this->_query, std::string(this->_body.begin(), this->_body.end()), scriptInterpreter, this->_path);
+	std::string scriptResult = script.execCgi();
+	this->_statusCode = OK;
+	this->_contentType = "text/html";
+	return setHeadersForScript(scriptResult, "OK") + scriptResult;
 }
 
 std::string Requests::getResponse() {
-	if (this->_body.size() != 0 && this->_body.size() != static_cast<size_t>(this->_lenOfBody)) {
-		this->_statusCode = BAD_REQUEST;
-		return setErrorPage();
-	}
-	if (this->_body.size() > this->_servParam.getClientMaxBodySize()) {
-		this->_statusCode = BAD_REQUEST;
-		return setErrorPage();
-	}
-	if (!this->_paramValid)
-		return "";
-	if (this->_method == "DELETE")
-		return doDelete();
-	if (this->_path.find(this->_uploadDir) != std::string::npos && this->_method == "POST" && this->_hasBody == MULTIPART)
-		return doUpload();
-	if (this->_path == "./pages/listFiles/delete.html")
-		return deleteFiles();
-	if (this->_statusCode == OK || this->_statusCode == FOUND) {
-		if (this->_autoIndexFile != "")
-			return setResponseScript(this->_autoIndexFile, "OK") + this->_autoIndexFile;
-		std::vector<std::string> words = split(this->_path, ".");
-		if (words.size() == 1) {
-			this->_statusCode = BAD_REQUEST;
-			return setErrorPage();
-		}
-		if (words[words.size() - 1] == "py" || words[words.size() - 1] == "php") {
-			std::vector<std::string> ext = this->_cgiExtensions;
-			for (size_t i = 0; i < ext.size(); i++) {
-				if (words[words.size() - 1] == ext[i]) {
-					if (access((this->_path).c_str(), X_OK)) {
-						this->_statusCode = FORBIDDEN;
-						return setErrorPage();
-					}
-					return execCgi(ext[i]);
-				}
-			}
-			this->_statusCode = NOT_IMPLEMENTED;
-			return setErrorPage();
-		}
-		if (this->_statusCode == FOUND)
-			return getPage(this->_path, setResponse("Found"));
-		return getPage(this->_path, setResponse("OK"));
-	}
-	return setErrorPage();
+	if (this->_path == "/favicon.ico")
+		return setFaviconResponse();
+	if (this->_redirection != "")
+		return setRedirectionResponse();
+	this->_path = "." + this->_root + this->_path;
+	if (isFolder())
+		return setFolderResponse();
+	checkPermissionPath();
+	std::string extension = getScriptExtension();
+	if (!extension.empty())
+		return setScriptResponse(extension);
+	return setResponse(OK);
 }
 
-std::string Requests::setErrorPage() {
-	ErrorPage err = this->_servParam.getErrorPage();
-	this->_protocol = err.getProtocol();
-	this->_contentType = err.getContentType();
-	this->_path = err.getPath(this->_statusCode);
-	return getPage(this->_path, setResponse(err.getErrorMessage(this->_statusCode)));
-}
+// std::string Requests::deleteFiles() {
+// 	this->_statusCode = OK;
+// 	std::vector<std::string> response;
+// 	std::string page;
+// 	DIR *dir = opendir(this->_uploadDir.c_str());
+// 	if (dir == NULL) {
+// 		this->_statusCode = INTERNAL_SERVER_ERROR;
+// 		return setErrorPage();
+// 	}
+// 	for (dirent *dirData = readdir(dir); dirData != NULL; dirData = readdir(dir))
+// 		response.push_back(dirData->d_name);
+// 	closedir(dir);
+// 	std::sort(response.begin(), response.end());
+// 	page.append("<!DOCTYPE html>");
+// 	page.append("<html>");
+// 	page.append("<head>");
+// 	page.append("<meta charset=\"utf-8\" />");
+// 	page.append("<html lang=\"en\"></html>");
+// 	page.append("<link rel=\"stylesheet\" type=\"text/css\" href=\"/stylesAutoIndex.css\" />");
+// 	page.append("<title>Delete</title>");
+// 	page.append("</head>");
+// 	page.append("<body>");
+// 	page.append("<h1>Choose files :</h1>");
+// 	page.append("<ul>");
+// 	this->_uploadDir.erase(0, this->_root.size() + 1);
+// 	for (size_t i = 0; i < response.size(); i++) {
+// 		if (response[i] != "." && response[i] != "..") {
+// 			page.append("<li>");
+// 			page.append("<a class=\"file\" href=" + this->_uploadDir + "/" + response[i] + ">" + response[i] + "</a>");
+// 			page.append("<button class=\"delete-button\" data-url=" + this->_uploadDir + "/" + response[i] + ">&#10005;</button>");
+// 			page.append("</li>");
+// 		}
+// 	}
+// 	page.append("</ul>");
+// 	page.append("<script src=\"delete.js\"></script>");
+// 	page.append("<div class=\"index\">");
+// 	page.append("<a class=\"indexButton\" href=\"../index.html\">Index</a>");
+// 	page.append("</div>");
+// 	page.append("</body>");
+// 	page.append("</html>");
+// 	return setResponseScript(page, "OK") + page;
+// }
 
-std::string Requests::setResponse(const std::string &codeName) {
+// std::string Requests::doDelete() {
+// 	if (std::remove(this->_path.c_str()) == -1) {
+// 		this->_statusCode = INTERNAL_SERVER_ERROR;
+// 		return setErrorPage();
+// 	}
+// 	this->_statusCode = OK;
+// 	this->_path = "./pages/listFiles/deleteSuccessful.html";
+// 	return getPage(this->_path, setResponse("OK"));
+// }
+
+// std::string Requests::getResponse() {
+// 	if (this->_body.size() != 0 && this->_body.size() != static_cast<size_t>(this->_lenOfBody)) {
+// 		this->_statusCode = BAD_REQUEST;
+// 		return setErrorPage();
+// 	}
+// 	if (this->_method == "DELETE")
+// 		return doDelete();
+// 	if (this->_path == "./pages/listFiles/delete.html")
+// 		return deleteFiles();
+
+std::string Requests::setHeaders(const std::string &codeName) {
 	std::string response;
 	struct stat buf;
 	int st = stat(this->_path.c_str(), &buf);
@@ -661,7 +473,7 @@ std::string Requests::setResponse(const std::string &codeName) {
 	return response;
 }
 
-std::string Requests::setResponseScript(const std::string &scriptResult, const std::string &codeName) {
+std::string Requests::setHeadersForScript(const std::string &scriptResult, const std::string &codeName) {
 	std::string response;
 	response.append(this->_protocol + " " + itostr(this->_statusCode) + " " + codeName + "\n");
 	response.append("Connection: Keep-Alive\n");

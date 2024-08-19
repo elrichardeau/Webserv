@@ -95,43 +95,96 @@ int ServerManager::compareClientSocket(int eventFd, bool forClose) {
     return -1;
 }
 
+bool findServerWithSocket(Server &servParam, std::vector<Server> manager, int serverSocket, std::string serverName) {
+	size_t find = serverName.find(":");
+	if (find != std::string::npos)
+		serverName.erase(find, serverName.size());
+	if (serverName == "localhost" || isValidIPAddress(serverName)) {
+		for (std::vector<Server>::iterator it = manager.begin(); it != manager.end(); it++) {
+			if (it->getServerSocket() == serverSocket) {
+				servParam = *it;
+				return true;
+			}
+		}
+	}
+	else
+		for (std::vector<Server>::iterator it = manager.begin(); it != manager.end(); it++) {
+			if (it->getServerSocket() == serverSocket && it->getServerName() == serverName) {
+				servParam = *it;
+				return true;
+			}
+		}
+	return false;
+}
+
 void ServerManager::handleClientSocket(epoll_event event) {
-	char buffer[BUF_SIZE] = {0};
+	std::vector<unsigned char> buffer(BUF_SIZE);
 	int serverSocket = compareClientSocket(event.data.fd, 0);
 	if (event.events & EPOLLHUP) {
 		close(event.data.fd);
-		return ;
+		return;
 	}
 	else if (event.events & EPOLLIN) {
-		std::string requestData;
+		std::vector<unsigned char> data(0);
+		std::vector<unsigned char>::iterator it;
 		int bytesRead;
-		while ((bytesRead = recv(event.data.fd, buffer, BUF_SIZE, 0)) > 0) {
-			buffer[bytesRead] = '\0';
-			requestData.append(buffer);
-			bzero(buffer, sizeof(buffer));
-			if (requestData.find("\r\n\r\n") != std::string::npos)
+		while ((bytesRead = recv(event.data.fd, buffer.data(), BUF_SIZE, 0)) > 0) {
+			buffer.resize(bytesRead);
+			data.insert(data.end(), buffer.begin(), buffer.end());
+			buffer.clear();
+			buffer.resize(BUF_SIZE);
+			it = std::search(data.begin(), data.end(),"\r\n\r\n", "\r\n\r\n" + 4);
+			if (it != data.end()) {
+				it += 4;
 				break;
-		}
-		if (bytesRead <= 0)
-			compareClientSocket(event.data.fd, 1);
-		else {
-			Requests req(requestData, this->_servers, serverSocket);
-			if (req.getBody("")) {
-				while ((bytesRead = recv(event.data.fd, buffer, BUF_SIZE, 0)) > 0) {
-					buffer[bytesRead] = '\0';
-					req.getBody(buffer);
-					bzero(buffer, sizeof(buffer));
-					if (bytesRead < BUF_SIZE)
-						break;
-				}
-				if (bytesRead <= 0)
-					compareClientSocket(event.data.fd, 1);
 			}
-			std::string response = req.getResponse();
-			if (response == "")
-				compareClientSocket(event.data.fd, 1);
-			else
+		}
+		if (bytesRead <= 0) {
+			bzero(data.data(), data.size());
+			compareClientSocket(event.data.fd, 1);
+		}
+		else {
+			std::string request;
+			std::vector<unsigned char> body;
+			request.insert(request.end(), data.begin(), it);
+			body.insert(body.end(), it, data.end());
+			bzero(data.data(), data.size());
+			std::map<std::string, std::string> headers = getHeaders(request);
+			Server servParam;
+			if (headers.empty()) {
+				std::string response = createBadRequestResponse(this->_servers, serverSocket);
 				send(event.data.fd, response.c_str(), response.size(), 0);
+				return;
+			}
+			if (!findServerWithSocket(servParam, this->_servers, serverSocket, headers["Host"])) {
+				compareClientSocket(event.data.fd, 1);
+				return;
+			}
+			try {
+				BodyType bodyType = getBodyType(headers["Content-Length"], headers["Transfer-Encoding"], headers["Content-Type"]);
+				Requests req(servParam, headers, body, headers["Content-Length"], bodyType);
+				req.setLocations();
+				if (req.getBodyType()) {
+					while ((bytesRead = recv(event.data.fd, buffer.data(), BUF_SIZE, 0)) > 0) {
+						buffer.resize(bytesRead);
+						req.getBody(buffer);
+						buffer.clear();
+						buffer.resize(BUF_SIZE);
+						if (bytesRead < BUF_SIZE)
+							break;
+					}
+					if (bytesRead <= 0)
+						compareClientSocket(event.data.fd, 1);
+				}
+				req.checkData();
+				std::string response = req.getResponse();
+				send(event.data.fd, response.c_str(), response.size(), 0);
+			}
+			catch (const std::exception &e) {
+				std::cout << "Code = " << e.what() << std::endl;
+				std::string response = createErrorResponse(servParam.getErrorPage(), atoi(e.what()));
+				send(event.data.fd, response.c_str(), response.size(), 0);
+			}
 		}
 	}
 }
