@@ -1,8 +1,8 @@
 
 #include "../includes/Cgi.hpp"
 
-Cgi::Cgi(const std::string &method, const std::string &query, const std::string &body, const std::string &scriptInterpreter, const std::string &path) :
-	_method(method), _query(query), _body(body), _scriptInterpreter(scriptInterpreter), _path(path) {}
+Cgi::Cgi(const std::string &method, const std::string &query, const std::string &body, const std::string &scriptInterpreter, const std::string &path, const std::string &uploadDir) :
+	_method(method), _query(query), _body(body), _scriptInterpreter(scriptInterpreter), _path(path), _uploadDir(uploadDir) {}
 
 Cgi::~Cgi() {}
 
@@ -40,6 +40,7 @@ std::vector<std::string> Cgi::createCgiEnv() {
 	env.push_back("SCRIPT_NAME=response.php");
 	env.push_back("SERVER_PROTOCOL=HTTP/1.1");
 	env.push_back("SERVER_SOFTWARE=webserv/1.1");
+	env.push_back("UPLOAD_DIR=" + this->_uploadDir);
 	if (this->_method == "GET")
 		env.push_back("QUERY_STRING=" + this->_query);
 	else if (this->_method == "POST") {

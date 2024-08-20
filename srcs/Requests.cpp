@@ -167,6 +167,65 @@ bool Requests::isMethodAllowed() {
 	return false;
 }
 
+void Requests::setFileName(const std::string &headersOfBody) {
+	size_t start = headersOfBody.find("filename=\"");
+	if (start == std::string::npos)
+		throw ErrorCode(itostr(BAD_REQUEST));
+	start += 10;
+	size_t end = headersOfBody.find("\"", start);
+	if (end == std::string::npos)
+		throw ErrorCode(itostr(BAD_REQUEST));
+	std::string fileName = headersOfBody.substr(start, end - start);
+	std::string filePath = this->_uploadDir + "/" + fileName;
+	size_t dotPosition = fileName.find_last_of(".");
+	std::string baseName = fileName.substr(0, dotPosition);
+	std::string extension = (dotPosition != std::string::npos) ? fileName.substr(dotPosition) : "";
+	for (size_t i = 1;; i++) {
+		std::ifstream fd(filePath.c_str());
+		if (!fd.is_open())
+			break;
+		fd.close();
+		std::stringstream ss;
+		ss << this->_uploadDir << "/" << baseName << "_" << i << extension;
+		filePath = ss.str();
+	}
+	this->_uploadDir = filePath;
+}
+
+void Requests::removeBoundary() {
+	std::vector<unsigned char>::iterator it;
+	it = std::search(this->_body.begin(), this->_body.end(),"\r\n\r\n", "\r\n\r\n" + 4);
+	if (it == this->_body.end())
+		throw ErrorCode(itostr(BAD_REQUEST));
+	it += 4;
+	std::string headersOfBody;
+	headersOfBody.insert(headersOfBody.end(), this->_body.begin(), it);
+	std::vector<unsigned char> tmp;
+	tmp.insert(tmp.end(), it, this->_body.end());
+	bzero(this->_body.data(), this->_body.size());
+	this->_body = tmp;
+	tmp.clear();
+	it = std::find_end(this->_body.begin(), this->_body.end(),"\r\n", "\r\n" + 2);
+	if (it == this->_body.end())
+		throw ErrorCode(itostr(BAD_REQUEST));
+	it = std::find_end(this->_body.begin(), it,"\r\n", "\r\n" + 2);
+	if (it == this->_body.end())
+		throw ErrorCode(itostr(BAD_REQUEST));
+	tmp.insert(tmp.end(), this->_body.begin(), it);
+	bzero(this->_body.data(), this->_body.size());
+	this->_body = tmp;
+	tmp.clear();
+	setFileName(headersOfBody);
+}
+
+void Requests::parseMultipartBody() {
+	DIR *dirFd = opendir(this->_uploadDir.c_str());
+	if (!dirFd)
+		throw ErrorCode(itostr(BAD_REQUEST));
+	closedir(dirFd);
+	removeBoundary();
+}
+
 void Requests::checkData() {
 	if (this->_protocol != "HTTP/1.1")
 		throw ErrorCode(itostr(HTTP_VERSION_NOT_SUPPORTED));
@@ -174,6 +233,8 @@ void Requests::checkData() {
 		throw ErrorCode(itostr(METHOD_NOT_ALLOWED));
 	if (this->_body.size() > this->_servParam.getClientMaxBodySize())
 		throw ErrorCode(itostr(BAD_REQUEST));
+	if (this->_bodyType == MULTIPART)
+		parseMultipartBody();
 }
 
 void Requests::setLocations() {
@@ -183,12 +244,15 @@ void Requests::setLocations() {
 	if (find != std::string::npos)
 		firstPath.erase(find, firstPath.size());
 	for (size_t i = 0; i < tmp.size(); i++) {
-		if (!(tmp[i].getPath()).compare(0, firstPath.size(), firstPath)) {
+		if (tmp[i].getPath() == firstPath) {
 			this->_allowMethod = tmp[i].getAllowMethods();
 			this->_index = tmp[i].getIndex();
 			this->_autoIndex = tmp[i].getautoIndex();
 			this->_root = tmp[i].getRoot();
-			this->_uploadDir = "." + this->_root + firstPath + tmp[i].getUploadDir();
+			if (tmp[i].getUploadDir().empty())
+				this->_uploadDir = "";
+			else
+				this->_uploadDir = "." + this->_root + firstPath + tmp[i].getUploadDir();
 			this->_redirection = tmp[i].getReturnDirective();
 			this->_cgiPathPy = "";
 			this->_cgiPathPhp = "";
@@ -281,8 +345,25 @@ std::string Requests::setRedirectionResponse() {
 	this->_statusCode = static_cast<StatusCode>(std::atoi(redirection[0].c_str()));
 	if (this->_statusCode != FOUND)
 		throw ErrorCode(itostr(NOT_IMPLEMENTED));
-	this->_path = "." + redirection[1];
+	size_t find = this->_path.find("/", 1);
+	if (find == std::string::npos) {
+		this->_path = "." + redirection[1];
+		return setResponse(FOUND);
+	}
+	std::string path = this->_path.substr(find, this->_path.size() - find);
+	this->_path = "." + redirection[1] + path;
 	return setResponse(FOUND);
+}
+
+std::string Requests::doDelete() {
+	size_t find = this->_path.find_last_of("/");
+	if (find == std::string::npos)
+		throw ErrorCode(itostr(INTERNAL_SERVER_ERROR));
+	this->_path = this->_uploadDir + this->_path.substr(find, this->_path.size() - find);
+	if (std::remove(this->_path.c_str()) == -1)
+		throw ErrorCode(itostr(INTERNAL_SERVER_ERROR));
+	this->_path = "./pages/listFiles/deleteSuccessful.html";
+	return setResponse(OK);
 }
 
 bool Requests::isFolder() {
@@ -363,7 +444,7 @@ std::string Requests::setScriptResponse(const std::string &extension) {
 		scriptInterpreter = this->_cgiPathPy;
 	else
 		scriptInterpreter = this->_cgiPathPhp;
-	Cgi script(this->_method, this->_query, std::string(this->_body.begin(), this->_body.end()), scriptInterpreter, this->_path);
+	Cgi script(this->_method, this->_query, std::string(this->_body.begin(), this->_body.end()), scriptInterpreter, this->_path, this->_uploadDir);
 	std::string scriptResult = script.execCgi();
 	this->_statusCode = OK;
 	this->_contentType = "text/html";
@@ -375,6 +456,8 @@ std::string Requests::getResponse() {
 		return setFaviconResponse();
 	if (this->_redirection != "")
 		return setRedirectionResponse();
+	if (this->_method == "DELETE")
+		return doDelete();
 	this->_path = "." + this->_root + this->_path;
 	if (isFolder())
 		return setFolderResponse();
@@ -384,69 +467,6 @@ std::string Requests::getResponse() {
 		return setScriptResponse(extension);
 	return setResponse(OK);
 }
-
-// std::string Requests::deleteFiles() {
-// 	this->_statusCode = OK;
-// 	std::vector<std::string> response;
-// 	std::string page;
-// 	DIR *dir = opendir(this->_uploadDir.c_str());
-// 	if (dir == NULL) {
-// 		this->_statusCode = INTERNAL_SERVER_ERROR;
-// 		return setErrorPage();
-// 	}
-// 	for (dirent *dirData = readdir(dir); dirData != NULL; dirData = readdir(dir))
-// 		response.push_back(dirData->d_name);
-// 	closedir(dir);
-// 	std::sort(response.begin(), response.end());
-// 	page.append("<!DOCTYPE html>");
-// 	page.append("<html>");
-// 	page.append("<head>");
-// 	page.append("<meta charset=\"utf-8\" />");
-// 	page.append("<html lang=\"en\"></html>");
-// 	page.append("<link rel=\"stylesheet\" type=\"text/css\" href=\"/stylesAutoIndex.css\" />");
-// 	page.append("<title>Delete</title>");
-// 	page.append("</head>");
-// 	page.append("<body>");
-// 	page.append("<h1>Choose files :</h1>");
-// 	page.append("<ul>");
-// 	this->_uploadDir.erase(0, this->_root.size() + 1);
-// 	for (size_t i = 0; i < response.size(); i++) {
-// 		if (response[i] != "." && response[i] != "..") {
-// 			page.append("<li>");
-// 			page.append("<a class=\"file\" href=" + this->_uploadDir + "/" + response[i] + ">" + response[i] + "</a>");
-// 			page.append("<button class=\"delete-button\" data-url=" + this->_uploadDir + "/" + response[i] + ">&#10005;</button>");
-// 			page.append("</li>");
-// 		}
-// 	}
-// 	page.append("</ul>");
-// 	page.append("<script src=\"delete.js\"></script>");
-// 	page.append("<div class=\"index\">");
-// 	page.append("<a class=\"indexButton\" href=\"../index.html\">Index</a>");
-// 	page.append("</div>");
-// 	page.append("</body>");
-// 	page.append("</html>");
-// 	return setResponseScript(page, "OK") + page;
-// }
-
-// std::string Requests::doDelete() {
-// 	if (std::remove(this->_path.c_str()) == -1) {
-// 		this->_statusCode = INTERNAL_SERVER_ERROR;
-// 		return setErrorPage();
-// 	}
-// 	this->_statusCode = OK;
-// 	this->_path = "./pages/listFiles/deleteSuccessful.html";
-// 	return getPage(this->_path, setResponse("OK"));
-// }
-
-// std::string Requests::getResponse() {
-// 	if (this->_body.size() != 0 && this->_body.size() != static_cast<size_t>(this->_lenOfBody)) {
-// 		this->_statusCode = BAD_REQUEST;
-// 		return setErrorPage();
-// 	}
-// 	if (this->_method == "DELETE")
-// 		return doDelete();
-// 	if (this->_path == "./pages/listFiles/delete.html")
-// 		return deleteFiles();
 
 std::string Requests::setHeaders(const std::string &codeName) {
 	std::string response;

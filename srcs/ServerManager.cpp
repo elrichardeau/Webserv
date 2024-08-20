@@ -147,7 +147,10 @@ void ServerManager::handleClientSocket(epoll_event event) {
 			std::string request;
 			std::vector<unsigned char> body;
 			request.insert(request.end(), data.begin(), it);
-			body.insert(body.end(), it, data.end());
+			if (it != data.end())
+				body.insert(body.end(), it, data.end());
+			else
+				body.insert(body.begin(), '\0');
 			bzero(data.data(), data.size());
 			std::map<std::string, std::string> headers = getHeaders(request);
 			Server servParam;
@@ -181,18 +184,12 @@ void ServerManager::handleClientSocket(epoll_event event) {
 				send(event.data.fd, response.c_str(), response.size(), 0);
 			}
 			catch (const std::exception &e) {
-				std::cout << "Code = " << e.what() << std::endl;
 				std::string response = createErrorResponse(servParam.getErrorPage(), atoi(e.what()));
 				send(event.data.fd, response.c_str(), response.size(), 0);
 			}
 		}
 	}
 }
-
-
-
-
-
 
 std::vector<Server> ServerManager::getServers() const {return this->_servers;}
 const char* ServerManager::SocketFailed::what() const throw() {return "Error: Socket Failed !";}

@@ -12,7 +12,7 @@ class Cgi {
 
 	public :
 
-		Cgi(const std::string &method, const std::string &query, const std::string &body, const std::string &scriptInterpreter, const std::string &path);
+		Cgi(const std::string &method, const std::string &query, const std::string &body, const std::string &scriptInterpreter, const std::string &path, const std::string &uploadDir);
 		~Cgi();
 		std::string execCgi();
 
@@ -23,6 +23,7 @@ class Cgi {
 		std::string _body;
 		std::string _scriptInterpreter;
 		std::string _path;
+		std::string _uploadDir;
 
 		std::string readFromPipe(int pipeFd);
 		char **vectorToCharArray(const std::vector<std::string> &vector);

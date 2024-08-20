@@ -65,10 +65,14 @@ class Requests {
 		std::string setUrlPath();
 		std::string setQuery();
 		bool isMethodAllowed();
+		void parseMultipartBody();
+		void setFileName(const std::string &headersOfBody);
+		void removeBoundary();
 		void getContentType();
 		void checkPermissionPath();
 		std::string setFaviconResponse();
 		std::string setRedirectionResponse();
+		std::string doDelete();
 		bool isFolder();
 		std::string createAutoIndexFile();
 		std::string setAutoIndexFile();
@@ -79,13 +83,6 @@ class Requests {
 		std::string setHeaders(const std::string &codeName);
 		std::string setHeadersForScript(const std::string &scriptResult, const std::string &codeName);
 		std::string setResponse(StatusCode statusCode);
-
-		// void getRootPath(const std::string &path);
-		// void setPath();
-		// void setContentType();
-		// void setBodyType(const std::string &length, const std::string &encoding, const std::string &type);
-		// std::string deleteFiles();
-		// std::string doDelete();
 };
 
 std::map<std::string, std::string> getHeaders(const std::string &request);

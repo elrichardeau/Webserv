@@ -33,7 +33,6 @@ class ServerManager {
 
 		std::vector<Server> _servers;
 	
-
 		class SocketFailed : public std::exception {
 			const char* what() const throw();
 		};
