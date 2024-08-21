@@ -133,7 +133,7 @@ void ServerManager::handleClientSocket(epoll_event event) {
 			data.insert(data.end(), buffer.begin(), buffer.end());
 			buffer.clear();
 			buffer.resize(BUF_SIZE);
-			it = std::search(data.begin(), data.end(),"\r\n\r\n", "\r\n\r\n" + 4);
+			it = std::search(data.begin(), data.end(),"\r\n\r\n", &"\r\n\r\n"[4]);
 			if (it != data.end()) {
 				it += 4;
 				break;

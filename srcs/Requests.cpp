@@ -194,7 +194,7 @@ void Requests::setFileName(const std::string &headersOfBody) {
 
 void Requests::removeBoundary() {
 	std::vector<unsigned char>::iterator it;
-	it = std::search(this->_body.begin(), this->_body.end(),"\r\n\r\n", "\r\n\r\n" + 4);
+	it = std::search(this->_body.begin(), this->_body.end(),"\r\n\r\n", &"\r\n\r\n"[4]);
 	if (it == this->_body.end())
 		throw ErrorCode(itostr(BAD_REQUEST));
 	it += 4;
@@ -205,10 +205,10 @@ void Requests::removeBoundary() {
 	bzero(this->_body.data(), this->_body.size());
 	this->_body = tmp;
 	tmp.clear();
-	it = std::find_end(this->_body.begin(), this->_body.end(),"\r\n", "\r\n" + 2);
+	it = std::find_end(this->_body.begin(), this->_body.end(),"\r\n", &"\r\n"[2]);
 	if (it == this->_body.end())
 		throw ErrorCode(itostr(BAD_REQUEST));
-	it = std::find_end(this->_body.begin(), it,"\r\n", "\r\n" + 2);
+	it = std::find_end(this->_body.begin(), it,"\r\n", &"\r\n"[2]);
 	if (it == this->_body.end())
 		throw ErrorCode(itostr(BAD_REQUEST));
 	tmp.insert(tmp.end(), this->_body.begin(), it);
