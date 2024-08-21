@@ -1,8 +1,9 @@
 <?php
 
+$params = array();
+
 if ($_SERVER["REQUEST_METHOD"] == "GET") {
     $query = $_SERVER["QUERY_STRING"];
-    $params = array();
     parse_str($query, $params);
     echo '<!DOCTYPE html>
     <html lang="en">
@@ -28,15 +29,14 @@ if ($_SERVER["REQUEST_METHOD"] == "GET") {
     $postData = stream_get_contents(STDIN);
     parse_str($postData, $params);
 
-
     $name = htmlspecialchars($params['name'] ?? 'N/A');
     $age = htmlspecialchars($params['age'] ?? 'N/A');
 
     echo '<!DOCTYPE html>
     <html lang="en">
     <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <link rel="stylesheet" type="text/css" href="../stylesResponse.css" />
         <title>Response</title>
     </head>
@@ -47,7 +47,7 @@ if ($_SERVER["REQUEST_METHOD"] == "GET") {
             <div class="tag">Age : <span class="value">' . $age . '</span></div>
         </div>
         <div class="index">
-            <a class="indexButton" href="/index.html">Index</a>
+            <a class="indexButton" href="../index.html">Index</a>
         </div>
     </body>
     </html>';

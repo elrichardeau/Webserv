@@ -190,6 +190,9 @@ void Config::uploadDir(std::vector<std::string> &tokens, LocationConfig &current
     {
         if (tokens.size() < 2)
             throw InvalidConfig("Error: No upload_dir specified.");
+        const std::string &path = tokens[1];
+        if (path[0] != '/')
+            throw InvalidConfig("Error: Upload path must start with '/'.");
         currentLocation.setUploadDir(tokens[1]);
     }
 }

@@ -6,11 +6,12 @@
 #include <stdexcept>
 #include <sys/epoll.h>
 #include <arpa/inet.h>
+#include <algorithm>
 #include "Server.hpp"
 #include "Requests.hpp"
 
 #define MAX_EVENTS 10
-#define BUF_SIZE 1024
+#define BUF_SIZE 1000
 
 class ServerManager {
 
@@ -32,7 +33,6 @@ class ServerManager {
 
 		std::vector<Server> _servers;
 	
-
 		class SocketFailed : public std::exception {
 			const char* what() const throw();
 		};

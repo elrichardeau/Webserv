@@ -14,25 +14,12 @@
 #include <sys/wait.h>
 #include "Server.hpp"
 #include "Config.hpp"
+#include "Cgi.hpp"
+#include "utils.hpp"
 
-enum StatusCode {
-	OK = 200,
-	FOUND = 302,
-	BAD_REQUEST = 400,
-	FORBIDDEN = 403,
-	NOT_FOUND = 404,
-	METHOD_NOT_ALLOWED = 405,
-	NOT_ACCEPTABLE = 406,
-	REQUEST_ENTITY_TOO_LARGE = 413,
-	INTERNAL_SERVER_ERROR = 500,
-	NOT_IMPLEMENTED = 501,
-	HTTP_VERSION_NOT_SUPPORTED = 505
-};
-
-enum BodyStatus {
-	NO_ONE,
-	UNDEFINED,
-	CLASSIC,
+enum BodyType {
+	NOTHING,
+	SIMPLE,
 	CHUNKED,
 	MULTIPART,
 };
@@ -41,57 +28,64 @@ class Requests {
 
 	public :
 
-		Requests(const std::string &buf, std::vector<Server> manager, int serverSocket);
+		Requests(Server &servParam, std::map<std::string, std::string> &headers, std::vector<unsigned char> &body, const std::string &lenOfBody, BodyType bodyType);
 		~Requests();
+		BodyType getBodyType();
+		void getBody(std::vector<unsigned char> buf);
+		void checkData();
+		void setLocations();
 		std::string getResponse();
-		bool getBody(const std::string &add);
 
 	private :
 
-		int _statusCode;
-		std::string _method;
-		std::string _urlPath;
-		std::string _path;
-		std::string _query;
+		Server _servParam;
 		std::string _protocol;
+		std::string _method;
+		std::string _path;
+		std::string _urlPath;
+		std::string _query;
 		std::vector<std::string> _accept;
+		std::vector<unsigned char> _body;
+		size_t _lenOfBody;
+		BodyType _bodyType;
+
+		StatusCode _statusCode;
+		std::string _contentType;
+
 		std::vector<std::string> _allowMethod;
 		std::vector<std::string> _index;
 		bool _autoIndex;
 		std::string _root;
 		std::string _uploadDir;
 		std::string _redirection;
-		std::string _contentType;
-		Server _servParam;
-		bool _paramValid;
 		std::vector<std::string> _cgiExtensions;
 		std::string _cgiPathPy;
 		std::string _cgiPathPhp;
-		std::string _body;
-		int _hasBody;
-		int _lenOfBody;
-		std::string _boundary;
-		std::string _autoIndexFile;
 
-		void getQuery();
-		std::string setErrorPage();
-		std::string setResponse(const std::string &codeName);
-		Server findServerWithSocket(std::vector<Server> manager, int serverSocket, std::string serverName);
-		void getRootPath(const std::string &path);
-		void setPath();
+		std::string setUrlPath();
+		std::string setQuery();
 		bool isMethodAllowed();
-		void setContentType();
-		void createAutoIndexFile();
-		void setBodyType(const std::string &length, const std::string &encoding, const std::string &type);
-
-		std::string execCgi(const std::string& scriptType);
-		std::string readFromPipe(int pipeFd);
-		char** vectorToCharArray(const std::vector<std::string> &vector);
-	    std::vector<std::string> createCgiEnv();
-		std::string setResponseScript(const std::string &scriptResult, const std::string &codeName);
-		std::string doUpload();
-		std::string deleteFiles();
+		void parseMultipartBody();
+		void setFileName(const std::string &headersOfBody);
+		void removeBoundary();
+		void getContentType();
+		void checkPermissionPath();
+		std::string setFaviconResponse();
+		std::string setRedirectionResponse();
 		std::string doDelete();
+		bool isFolder();
+		std::string createAutoIndexFile();
+		std::string setAutoIndexFile();
+		std::string setFolderResponse();
+		std::string getScriptExtension();
+		std::string setScriptResponse(const std::string &extension);
+
+		std::string setHeaders(const std::string &codeName);
+		std::string setHeadersForScript(const std::string &scriptResult, const std::string &codeName);
+		std::string setResponse(StatusCode statusCode);
 };
 
-std::string itostr(int nb);
+std::map<std::string, std::string> getHeaders(const std::string &request);
+std::string createBadRequestResponse(std::vector<Server> manager, int serverSocket);
+std::string createErrorResponse(ErrorPage err, int code);
+BodyType getBodyType(const std::string &length, const std::string &encoding, const std::string &type);

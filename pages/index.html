@@ -3,7 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" type="text/css" href="styles.css">
     <title>Welcome to Web Server</title>
     <style>
         body {
@@ -14,7 +13,9 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
+            height: calc(100vh - 100px);
+            text-align: center;
+            padding-top: 100px;
         }
         .container {
             text-align: center;
@@ -22,13 +23,23 @@
             padding: 20px;
             border-radius: 8px;
             box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+            max-width: 600px;
+            margin: 0 auto;
         }
         p {
+            font-size: 1.5em;
+            margin-top: 80px;
             color:#333;
         }
         h1 {
             color: #333;
             margin-bottom: 20px;
+            font-size: 6em;
+        }
+        h2 {
+            font-size: 3em;
+            margin-bottom: 20px;
+            color: #ffffffc4;
         }
         .button-container {
             display: flex;
@@ -42,7 +53,6 @@
             background-color: #007BFF;
             color: white;
             padding: 15px 30px;
-            border-radius: 5px;
             font-size: 16px;
             transition: background-color 0.3s;
             text-align: center;
@@ -81,6 +91,21 @@
         .dropdown:hover .dropdown-content {
             display: block;
         }
+        .indexButton {
+            display: block;
+            margin: 50px auto;
+            color: #ffffff;
+            text-decoration: none;
+            font-size: 1.2em;
+            text-align: center;
+            padding: 10px 20px;
+            background-color: #007BFF;
+            border-radius: 5px;
+            width: 100px;
+        }
+        .indexButton:hover {
+            background-color: #0056b3;
+        }
     </style>
 </head>
 <body>
@@ -89,7 +114,7 @@
         <p>Select one of the following options:</p>
         <div class="button-container">
             <a href="/listFiles/uploadFile.html">Upload</a>
-            <a href="/listFiles/delete.html">Delete</a>
+            <a href="/cgi-bin/delete.php">Delete</a>
             <a href="/postCgi.html">Post</a>
             <div class="dropdown">
                 <a href="#" class="dropbtn">Get</a>
@@ -102,5 +127,3 @@
     </div>
 </body>
 </html>
-
-
